@@ -341,7 +341,7 @@
   <div class="view-camera">
     <div class="cam-topbar">
       <button class="brand-chip" id="brandChipBtn" type="button">
-        <span class="wordmark" id="wordmarkPreview">toyo</span>
+        <span class="wordmark" id="wordmarkPreview">chani._.wu</span>
         <span class="edit-glyph">edit ✎</span>
       </button>
       <button class="timer-toggle on" id="timerToggleBtn" type="button" aria-pressed="true">
@@ -428,7 +428,7 @@
     <h3>strip text</h3>
     <div class="field">
       <label for="brandInput">Wordmark (top of strip)</label>
-      <input id="brandInput" type="text" maxlength="16" value="toyo" />
+      <input id="brandInput" type="text" maxlength="16" value="chani._.wu" />
     </div>
     <div class="field">
       <label for="captionInput">Caption (bottom of strip)</label>
@@ -822,7 +822,7 @@
 
   /* ================= edit sheet ================= */
   function syncWordmarkPreview(){
-    wordmarkPreview.textContent = brandInput.value || 'toyo';
+    wordmarkPreview.textContent = brandInput.value || 'chani._.wu';
   }
   brandChipBtn.addEventListener('click', function(){ document.body.classList.add('sheet-open'); });
   sheetDoneBtn.addEventListener('click', function(){ document.body.classList.remove('sheet-open'); });
@@ -870,7 +870,7 @@
     stripCtx.fillStyle = '#0a0908';
     stripCtx.fillRect(0, 0, STRIP_W, STRIP_H);
 
-    var brand = (brandInput.value || 'toyo').trim() || 'toyo';
+    var brand = (brandInput.value || 'chani._.wu').trim() || 'chani._.wu';
     drawWordmark(stripCtx, brand, STRIP_W / 2, HEADER_H / 2 + 6, 46);
 
     for (var i = 0; i < 4; i++){

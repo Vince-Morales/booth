@@ -198,6 +198,31 @@
   }
   .filter-chip.active{color:var(--bg); background:var(--amber); border-color:var(--amber); font-weight:600;}
 
+  .softness-row{
+    display:flex; align-items:center; gap:10px;
+    padding:6px 18px 8px;
+  }
+  .softness-label{font-size:12px; color:var(--ink-dim); flex:0 0 auto;}
+  .softness-value{font-size:11.5px; color:var(--ink-dim); font-family:'JetBrains Mono', monospace; flex:0 0 34px; text-align:right;}
+  .softness-row input[type="range"]{
+    flex:1;
+    -webkit-appearance:none; appearance:none;
+    height:4px; border-radius:999px;
+    background:var(--line);
+    outline:none;
+  }
+  .softness-row input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:18px; height:18px; border-radius:50%;
+    background:var(--amber);
+    border:2px solid var(--bg);
+  }
+  .softness-row input[type="range"]::-moz-range-thumb{
+    width:18px; height:18px; border-radius:50%;
+    background:var(--amber);
+    border:2px solid var(--bg);
+  }
+
   .cam-bottombar{
     display:flex; align-items:center; justify-content:space-between;
     padding:10px 22px calc(16px + var(--sab));
@@ -257,7 +282,17 @@
     display:flex; justify-content:center;
     padding:8px 14px;
   }
-  #stripCanvas{max-width:100%; height:auto; border-radius:10px; display:block;}
+  #stripCanvas{max-width:100%; height:auto; border-radius:10px; display:block; touch-action:none;}
+
+  .sticker-bar{
+    display:flex; justify-content:center;
+    padding:8px 18px 0;
+  }
+  .sticker-bar .btn{padding:9px 16px; font-size:13px;}
+  .sticker-hint{
+    text-align:center; font-size:11px; color:var(--ink-dim);
+    padding:6px 18px 0;
+  }
 
   .frame-list{display:flex; gap:8px; padding:8px 14px; justify-content:center;}
   .frame-thumb{
@@ -294,8 +329,8 @@
   .btn.primary{background:var(--amber); border-color:var(--amber); color:#171412;}
   .btn.ghost{background:transparent; color:var(--ink-dim); font-weight:500; padding:8px;}
   .btn:active{transform:scale(.98);}
-  .btn-row{display:flex; gap:10px;}
-  .btn-row .btn{flex:1;}
+  .btn-row{display:flex; gap:8px;}
+  .btn-row .btn{flex:1; padding:14px 10px; font-size:14px;}
   .share-note{text-align:center; font-size:11px; color:var(--ink-dim); margin:-2px 0 2px;}
 
   /* ================= EDIT SHEET ================= */
@@ -319,6 +354,34 @@
     color:var(--ink); padding:12px; border-radius:10px; font-size:15px;
   }
   .sheet .btn{margin-top:4px;}
+  .segmented{
+    display:flex;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .seg-btn{
+    flex:1;
+    padding:11px 6px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-dim);
+    background:transparent;
+    text-align:center;
+  }
+  .seg-btn.active{background:var(--amber); color:#171412;}
+  .seg-btn:not(:last-child){border-right:1px solid var(--line);}
+  .color-row{display:flex; align-items:center; gap:10px;}
+  .color-row input[type="color"]{
+    width:48px; height:44px; padding:0; border:1px solid var(--line);
+    border-radius:10px; background:none; flex:0 0 auto;
+  }
+  .color-row input[type="text"]{
+    flex:1; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--ink); padding:12px; border-radius:10px; font-size:15px;
+    font-family:'JetBrains Mono', monospace; text-transform:uppercase;
+  }
 
   /* ================= PRINT ================= */
   #printArea{display:none;}
@@ -341,7 +404,7 @@
   <div class="view-camera">
     <div class="cam-topbar">
       <button class="brand-chip" id="brandChipBtn" type="button">
-        <span class="wordmark" id="wordmarkPreview">chani._.wu</span>
+        <span class="wordmark" id="wordmarkPreview">chani._.uwu</span>
         <span class="edit-glyph">edit ✎</span>
       </button>
       <button class="timer-toggle on" id="timerToggleBtn" type="button" aria-pressed="true">
@@ -379,6 +442,12 @@
 
     <div class="filters" id="filters"></div>
 
+    <div class="softness-row">
+      <span class="softness-label">Softness</span>
+      <input type="range" id="softnessSlider" min="0" max="100" value="0" step="5" />
+      <span class="softness-value" id="softnessValue">0%</span>
+    </div>
+
     <div class="cam-bottombar">
       <button class="review-jump" id="reviewJumpBtn" type="button" style="visibility:hidden;"><span id="reviewJumpCount">0/4</span></button>
 
@@ -396,11 +465,18 @@
     <div class="review-topbar">
       <button class="icon-btn" id="backToCamBtn" type="button">←</button>
       <h2>your strip</h2>
+      <button class="icon-btn" id="customizeBtn" type="button" style="margin-left:auto;">✎</button>
     </div>
 
     <div class="strip-scroll">
       <canvas id="stripCanvas" width="620" height="1180"></canvas>
     </div>
+
+    <div class="sticker-bar">
+      <button class="btn ghost" id="addStickerBtn" type="button">🏷 Add sticker</button>
+      <input type="file" id="stickerFileInput" accept="image/*" multiple style="display:none;" />
+    </div>
+    <p class="sticker-hint" id="stickerHint" style="display:none;">Drag to move · corner handles resize, rotate, delete</p>
 
     <div class="frame-list" id="frameList">
       <div class="frame-thumb" data-i="0"><span>1</span></div>
@@ -414,6 +490,7 @@
       <p class="share-note" id="shareNote">Share opens your device's share sheet.</p>
       <div class="btn-row">
         <button class="btn primary" id="shareBtn" type="button">⬆︎ Share</button>
+        <button class="btn" id="saveBtn" type="button">⬇︎ Save</button>
         <button class="btn" id="printBtn" type="button">🖨 Print</button>
       </div>
       <button class="btn ghost" id="newSessionBtn" type="button">Start a new session</button>
@@ -425,10 +502,35 @@
 <!-- ================= EDIT SHEET ================= -->
 <div class="sheet-backdrop" id="sheetBackdrop">
   <div class="sheet">
-    <h3>strip text</h3>
+    <h3>customize your strip</h3>
+
+    <div class="field">
+      <label>Layout</label>
+      <div class="segmented" id="layoutSeg">
+        <button type="button" class="seg-btn active" data-val="strip">Long strip</button>
+        <button type="button" class="seg-btn" data-val="grid">2×2 grid</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Border</label>
+      <div class="segmented" id="borderSeg">
+        <button type="button" class="seg-btn active" data-val="on">Border</button>
+        <button type="button" class="seg-btn" data-val="off">No border</button>
+      </div>
+    </div>
+
+    <div class="field" id="borderColorField">
+      <label>Border color</label>
+      <div class="color-row">
+        <input type="color" id="borderColorPicker" value="#ffffff" />
+        <input type="text" id="borderColorHex" value="#FFFFFF" maxlength="7" spellcheck="false" autocapitalize="off" />
+      </div>
+    </div>
+
     <div class="field">
       <label for="brandInput">Wordmark (top of strip)</label>
-      <input id="brandInput" type="text" maxlength="16" value="chani._.wu" />
+      <input id="brandInput" type="text" maxlength="16" value="chani._.uwu" />
     </div>
     <div class="field">
       <label for="captionInput">Caption (bottom of strip)</label>
@@ -446,37 +548,46 @@
 
   /* ================= config ================= */
   var FILTERS = [
-    { id:'none',    label:'No filter', css:'none',                                              canvas:'none' },
-    { id:'noir',    label:'Noir',      css:'grayscale(1) contrast(1.15)',                        canvas:'grayscale(1) contrast(1.15)' },
-    { id:'sepia',   label:'Sepia',     css:'sepia(.75) contrast(1.05)',                           canvas:'sepia(.75) contrast(1.05)' },
-    { id:'vintage', label:'Vintage',   css:'sepia(.35) saturate(1.3) contrast(1.05) brightness(1.03)', canvas:'sepia(.35) saturate(1.3) contrast(1.05) brightness(1.03)', vignette:true },
-    { id:'cool',    label:'Cool',      css:'hue-rotate(180deg) saturate(1.1)',                    canvas:'hue-rotate(180deg) saturate(1.1)' },
-    { id:'vivid',   label:'Vivid',     css:'saturate(1.55) contrast(1.15)',                       canvas:'saturate(1.55) contrast(1.15)' }
+    { id:'normal', label:'Normal',        css:'',                              canvas:'' },
+    { id:'bw',     label:'Black & White', css:'grayscale(1) contrast(1.1)',   canvas:'grayscale(1) contrast(1.1)' },
+    { id:'sepia',  label:'Sepia',         css:'sepia(.75) contrast(1.05)',    canvas:'sepia(.75) contrast(1.05)' }
   ];
-  var FRAME_LABELS = ['29', '29A', '30A', '31'];
   var LETTER_COLORS = ['#4e8cff', '#e85d3d', '#f2b705', '#3eaf60', '#b23a2e'];
 
-  var FRAME_W = 460, GUTTER = 14, MARGIN = 60, LABEL_W = 46;
-  var HEADER_H = 130, FOOTER_H = 110;
-  var STRIP_W = MARGIN * 2 + LABEL_W + FRAME_W;
-
   /* camera aspect ratio starts at a sane default, gets corrected to the
-     real device stream as soon as we know it — this is what stops any
-     stretch/crop mismatch between preview and the saved strip. */
+     real device stream as soon as we know it — used only to keep the
+     live preview box and capture resolution matched to the camera;
+     the final strip/grid crops each shot to whatever shape the chosen
+     layout needs at draw time, so this never distorts the output. */
   var camAspect = 3 / 4; // width / height
-  var FRAME_H = Math.round(FRAME_W / camAspect);
-  var STRIP_H = HEADER_H + (FRAME_H + GUTTER) * 4 + FOOTER_H;
+  var ASPECT_PORTRAIT = 3 / 4;   // w/h — taller than wide
+  var ASPECT_LANDSCAPE = 4 / 3;  // w/h — wider than tall
 
   /* ================= state ================= */
   var state = {
-    activeFilter: 'none',
+    activeFilter: 'normal',
     stream: null,
     facingMode: 'user',
     shots: [null, null, null, null],
     sessionRunning: false,
     retakeIndex: null,
-    timerEnabled: true
+    timerEnabled: true,
+    softness: 0,
+    orientation: 'portrait', // corrected immediately below from the real device orientation
+    layout: 'strip',
+    border: true,
+    borderColor: '#ffffff',
+    stickers: [],
+    selectedSticker: null
   };
+
+  /* orientation now follows the device instead of a manual toggle */
+  function detectOrientation(){
+    if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return 'landscape';
+    if (window.innerWidth && window.innerHeight) return window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+    return 'portrait';
+  }
+  state.orientation = detectOrientation();
 
   /* ================= elements ================= */
   var video = document.getElementById('video');
@@ -507,6 +618,7 @@
   var frameList = document.getElementById('frameList');
   var backToCamBtn = document.getElementById('backToCamBtn');
   var shareBtn = document.getElementById('shareBtn');
+  var saveBtn = document.getElementById('saveBtn');
   var printBtn = document.getElementById('printBtn');
   var newSessionBtn = document.getElementById('newSessionBtn');
   var flashEl = document.getElementById('flash');
@@ -516,11 +628,30 @@
   var poseMsg = document.getElementById('poseMsg');
   var printImg = document.getElementById('printImg');
   var shareNote = document.getElementById('shareNote');
+  var softnessSlider = document.getElementById('softnessSlider');
+  var softnessValue = document.getElementById('softnessValue');
+  var customizeBtn = document.getElementById('customizeBtn');
+  var layoutSeg = document.getElementById('layoutSeg');
+  var borderSeg = document.getElementById('borderSeg');
+  var borderColorField = document.getElementById('borderColorField');
+  var borderColorPicker = document.getElementById('borderColorPicker');
+  var borderColorHex = document.getElementById('borderColorHex');
+  var addStickerBtn = document.getElementById('addStickerBtn');
+  var stickerFileInput = document.getElementById('stickerFileInput');
+  var stickerHint = document.getElementById('stickerHint');
 
-  stripCanvas.width = STRIP_W;
-  stripCanvas.height = STRIP_H;
+  /* stripCanvas is sized dynamically inside drawStrip() based on the
+     chosen orientation/layout/border, so no fixed size is set here. */
 
-  /* ================= filter chips ================= */
+  /* ================= filter chips + softness ================= */
+  function applyPreviewFilter(){
+    var f = FILTERS.filter(function(x){ return x.id === state.activeFilter; })[0];
+    var parts = [];
+    if (f && f.css && f.css !== 'none') parts.push(f.css);
+    if (state.softness > 0) parts.push('blur(' + (state.softness / 100 * 2.5).toFixed(2) + 'px)');
+    video.style.filter = parts.join(' ');
+  }
+
   FILTERS.forEach(function(f){
     var chip = document.createElement('button');
     chip.type = 'button';
@@ -528,12 +659,20 @@
     chip.textContent = f.label;
     chip.addEventListener('click', function(){
       state.activeFilter = f.id;
-      video.style.filter = f.css === 'none' ? '' : f.css;
       Array.prototype.forEach.call(filtersEl.children, function(c){ c.classList.remove('active'); });
       chip.classList.add('active');
+      applyPreviewFilter();
     });
     filtersEl.appendChild(chip);
   });
+
+  softnessSlider.addEventListener('input', function(){
+    state.softness = parseInt(softnessSlider.value, 10) || 0;
+    softnessValue.textContent = state.softness + '%';
+    applyPreviewFilter();
+  });
+
+  applyPreviewFilter();
 
   /* ================= timer toggle ================= */
   function updateTimerToggle(){
@@ -619,20 +758,15 @@
     statusText.textContent = 'camera unavailable';
   }
 
-  /* the fix for "camera does not stretch": once we know the real stream
-     dimensions, match the preview box AND the saved-strip frame size to
-     that exact ratio, so cropping/cover math never distorts proportions */
+  /* keeps the live preview box matched to the real device stream ratio so
+     it isn't stretched; the saved strip/grid crops each shot to whatever
+     shape the chosen layout needs, so this doesn't need to touch that. */
   video.addEventListener('loadedmetadata', function(){
     if (!video.videoWidth || !video.videoHeight) return;
     var ratio = video.videoWidth / video.videoHeight;
     ratio = Math.max(0.45, Math.min(1.4, ratio)); // guard against odd reports
     camAspect = ratio;
     cameraWrap.style.aspectRatio = ratio.toFixed(4) + ' / 1';
-    FRAME_H = Math.round(FRAME_W / camAspect);
-    STRIP_H = HEADER_H + (FRAME_H + GUTTER) * 4 + FOOTER_H;
-    stripCanvas.width = STRIP_W;
-    stripCanvas.height = STRIP_H;
-    drawStrip();
   });
 
   enableCamBtn.addEventListener('click', startCamera);
@@ -678,11 +812,12 @@
 
   function captureFrame(){
     var off = document.createElement('canvas');
-    off.width = FRAME_W * 2;
-    off.height = FRAME_H * 2;
+    off.width = 920;
+    off.height = Math.round(off.width / camAspect);
     var octx = off.getContext('2d');
     var f = FILTERS.filter(function(x){ return x.id === state.activeFilter; })[0];
-    octx.filter = f.canvas === 'none' ? 'none' : f.canvas;
+    var colorCss = (f && f.css && f.css !== 'none') ? f.css : '';
+    octx.filter = colorCss || 'none';
 
     var vw = video.videoWidth, vh = video.videoHeight;
     var targetRatio = off.width / off.height;
@@ -702,13 +837,38 @@
     octx.drawImage(video, sx, sy, sw, sh, 0, 0, off.width, off.height);
     octx.restore();
 
-    if (f.vignette){
-      octx.filter = 'none';
-      var g = octx.createRadialGradient(off.width/2, off.height/2, off.height*0.35, off.width/2, off.height/2, off.height*0.75);
-      g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, 'rgba(0,0,0,.28)');
-      octx.fillStyle = g;
-      octx.fillRect(0, 0, off.width, off.height);
+    /* soft-focus pass: blend a blurred copy on top, masked so it's
+       strongest around where a face usually sits in the frame (upper-
+       center) and fades toward the edges — smooths skin texture without
+       flattening the whole image into a uniform blur. */
+    var softness = state.softness / 100;
+    if (softness > 0){
+      var blurPx = softness * off.width * 0.035;
+      var blurLayer = document.createElement('canvas');
+      blurLayer.width = off.width;
+      blurLayer.height = off.height;
+      var bctx = blurLayer.getContext('2d');
+      bctx.filter = (colorCss ? colorCss + ' ' : '') + 'blur(' + blurPx.toFixed(1) + 'px)';
+      bctx.save();
+      if (state.facingMode === 'user'){
+        bctx.translate(off.width, 0);
+        bctx.scale(-1, 1);
+      }
+      bctx.drawImage(video, sx, sy, sw, sh, 0, 0, off.width, off.height);
+      bctx.restore();
+
+      bctx.filter = 'none';
+      bctx.globalCompositeOperation = 'destination-in';
+      var g = bctx.createRadialGradient(
+        off.width / 2, off.height * 0.42, off.height * 0.06,
+        off.width / 2, off.height * 0.42, off.height * 0.55
+      );
+      g.addColorStop(0, 'rgba(255,255,255,' + Math.min(0.75, softness * 0.8).toFixed(2) + ')');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      bctx.fillStyle = g;
+      bctx.fillRect(0, 0, blurLayer.width, blurLayer.height);
+
+      octx.drawImage(blurLayer, 0, 0);
     }
 
     var img = new Image();
@@ -797,6 +957,9 @@
   backToCamBtn.addEventListener('click', goToCamera);
   newSessionBtn.addEventListener('click', function(){
     state.shots = [null, null, null, null];
+    state.stickers = [];
+    state.selectedSticker = null;
+    updateStickerHint();
     Array.prototype.forEach.call(frameList.children, function(t){ t.style.backgroundImage = ''; });
     updateReviewJump();
     drawStrip();
@@ -822,15 +985,71 @@
 
   /* ================= edit sheet ================= */
   function syncWordmarkPreview(){
-    wordmarkPreview.textContent = brandInput.value || 'chani._.wu';
+    wordmarkPreview.textContent = brandInput.value || 'chani._.uwu';
   }
-  brandChipBtn.addEventListener('click', function(){ document.body.classList.add('sheet-open'); });
+  function openSheet(){ document.body.classList.add('sheet-open'); }
+  brandChipBtn.addEventListener('click', openSheet);
+  customizeBtn.addEventListener('click', openSheet);
   sheetDoneBtn.addEventListener('click', function(){ document.body.classList.remove('sheet-open'); });
   sheetBackdrop.addEventListener('click', function(e){
     if (e.target === sheetBackdrop) document.body.classList.remove('sheet-open');
   });
   brandInput.addEventListener('input', function(){ syncWordmarkPreview(); drawStrip(); });
   captionInput.addEventListener('input', drawStrip);
+
+  function wireSegmented(container, onChange){
+    Array.prototype.forEach.call(container.children, function(btn){
+      btn.addEventListener('click', function(){
+        Array.prototype.forEach.call(container.children, function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        onChange(btn.getAttribute('data-val'));
+      });
+    });
+  }
+  wireSegmented(layoutSeg, function(val){ state.layout = val; drawStrip(); });
+  wireSegmented(borderSeg, function(val){
+    state.border = (val === 'on');
+    updateBorderColorVisibility();
+    drawStrip();
+  });
+
+  function normalizeHex(v){
+    v = (v || '').trim();
+    if (!v) return null;
+    if (v[0] !== '#') v = '#' + v;
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)){
+      if (v.length === 4) v = '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+      return v.toLowerCase();
+    }
+    return null;
+  }
+  function setBorderColor(hex){
+    var n = normalizeHex(hex);
+    if (!n) return;
+    state.borderColor = n;
+    borderColorPicker.value = n;
+    borderColorHex.value = n.toUpperCase();
+    drawStrip();
+  }
+  function updateBorderColorVisibility(){
+    borderColorField.style.display = state.border ? '' : 'none';
+  }
+  updateBorderColorVisibility();
+  borderColorPicker.addEventListener('input', function(){ setBorderColor(borderColorPicker.value); });
+  borderColorHex.addEventListener('change', function(){
+    var n = normalizeHex(borderColorHex.value);
+    if (n) setBorderColor(n); else borderColorHex.value = state.borderColor.toUpperCase();
+  });
+
+  function refreshOrientation(){
+    var o = detectOrientation();
+    if (o !== state.orientation){
+      state.orientation = o;
+      drawStrip();
+    }
+  }
+  window.addEventListener('resize', refreshOrientation);
+  window.addEventListener('orientationchange', function(){ setTimeout(refreshOrientation, 200); });
 
   /* ================= strip rendering ================= */
   function drawWordmark(ctx, text, cx, cy, size){
@@ -866,60 +1085,415 @@
     lines.forEach(function(l, i){ ctx.fillText(l, cx, startY + i * lineHeight); });
   }
 
-  function drawStrip(){
-    stripCtx.fillStyle = '#0a0908';
-    stripCtx.fillRect(0, 0, STRIP_W, STRIP_H);
-
-    var brand = (brandInput.value || 'chani._.wu').trim() || 'chani._.wu';
-    drawWordmark(stripCtx, brand, STRIP_W / 2, HEADER_H / 2 + 6, 46);
-
-    for (var i = 0; i < 4; i++){
-      var y = HEADER_H + i * (FRAME_H + GUTTER);
-      var x = MARGIN + LABEL_W;
-
-      stripCtx.save();
-      stripCtx.font = '500 13px "JetBrains Mono", monospace';
-      stripCtx.fillStyle = 'rgba(237,230,220,.55)';
-      stripCtx.translate(MARGIN - 4, y + FRAME_H / 2);
-      stripCtx.rotate(-Math.PI / 2);
-      var lbl = (i === 1 || i === 2 ? '\u25B2 ' : '') + FRAME_LABELS[i];
-      stripCtx.fillText(lbl, -20, 4);
-      stripCtx.restore();
-
-      stripCtx.fillStyle = '#100d0c';
-      stripCtx.fillRect(x, y, FRAME_W, FRAME_H);
-
-      var shot = state.shots[i];
-      if (shot && shot.img && shot.img.complete && shot.img.naturalWidth){
-        stripCtx.drawImage(shot.img, x, y, FRAME_W, FRAME_H);
-      } else {
-        stripCtx.fillStyle = 'rgba(237,230,220,.18)';
-        stripCtx.font = '500 14px "Space Grotesk", sans-serif';
-        stripCtx.textAlign = 'center';
-        stripCtx.fillText('frame ' + (i + 1), x + FRAME_W / 2, y + FRAME_H / 2);
-        stripCtx.textAlign = 'left';
-      }
-
-      stripCtx.strokeStyle = 'rgba(237,230,220,.14)';
-      stripCtx.lineWidth = 1;
-      stripCtx.strokeRect(x + .5, y + .5, FRAME_W - 1, FRAME_H - 1);
+  /* draws img into the destination box, center-cropping it (like CSS
+     object-fit:cover) so any stored shot can be re-framed into whatever
+     cell shape the current orientation/layout needs. */
+  function drawImageCover(ctx, img, dx, dy, dw, dh){
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    var iw = img.naturalWidth, ih = img.naturalHeight;
+    var srcRatio = iw / ih, dstRatio = dw / dh;
+    var sx, sy, sw, sh;
+    if (srcRatio > dstRatio){
+      sh = ih; sw = ih * dstRatio; sx = (iw - sw) / 2; sy = 0;
+    } else {
+      sw = iw; sh = iw / dstRatio; sx = 0; sy = (ih - sh) / 2;
     }
-
-    var caption = (captionInput.value || '').trim();
-    if (caption){
-      stripCtx.save();
-      stripCtx.font = '600 22px "Space Grotesk", sans-serif';
-      stripCtx.fillStyle = 'rgba(237,230,220,.92)';
-      stripCtx.textAlign = 'center';
-      wrapCenteredText(stripCtx, caption, STRIP_W / 2, STRIP_H - FOOTER_H / 2, STRIP_W - MARGIN * 2, 28);
-      stripCtx.restore();
-    }
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    return true;
   }
 
-  /* ================= share / print ================= */
-  function shareStrip(){
+  /* ================= color helpers ================= */
+  function hexToRgb(hex){
+    var h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(function(c){ return c + c; }).join('');
+    var num = parseInt(h, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+  function relLuminance(hex){
+    var c = hexToRgb(hex);
+    return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255;
+  }
+  function mixHex(hex, towardBlack, amt){
+    var c = hexToRgb(hex);
+    var t = towardBlack ? 0 : 255;
+    var r = Math.round(c.r + (t - c.r) * amt);
+    var g = Math.round(c.g + (t - c.g) * amt);
+    var b = Math.round(c.b + (t - c.b) * amt);
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  function computeGeometry(){
+    var aspect = state.orientation === 'landscape' ? ASPECT_LANDSCAPE : ASPECT_PORTRAIT;
+    var showChrome = state.border; // border/wordmark/caption band only exist when bordered
+
+    /* thin uniform border on top/left/right, a tall band at the bottom
+       for the wordmark + caption — matches a classic die-cut photo-strip */
+    var side = showChrome ? 26 : 0;
+    var headerH = side;
+    var footerH = showChrome ? 190 : 0;
+
+    if (state.layout === 'grid'){
+      var gGutter = showChrome ? 16 : 6;
+      var cellW = 460;
+      var cellH = Math.round(cellW / aspect);
+      return {
+        mode: 'grid', margin: side, gutter: gGutter, cellW: cellW, cellH: cellH,
+        headerH: headerH, footerH: footerH, showChrome: showChrome,
+        w: side * 2 + cellW * 2 + gGutter,
+        h: headerH + cellH * 2 + gGutter + footerH
+      };
+    }
+    var gutter = showChrome ? 16 : 6;
+    var frameW = 460;
+    var frameH = Math.round(frameW / aspect);
+    return {
+      mode: 'strip', margin: side, gutter: gutter, frameW: frameW, frameH: frameH,
+      headerH: headerH, footerH: footerH, showChrome: showChrome,
+      w: side * 2 + frameW,
+      h: headerH + frameH * 4 + gutter * 3 + footerH
+    };
+  }
+
+  function drawStrip(){
+    var geo = computeGeometry();
+    stripCanvas.width = geo.w;
+    stripCanvas.height = geo.h;
+
+    var bg = state.border ? state.borderColor : '#0a0908';
+    var lum = relLuminance(bg);
+    var isLight = lum > 0.5;
+    /* readable ink & placeholder tones derived from the chosen border color */
+    var inkStrong = state.border ? (isLight ? '#201c18' : '#f5f1e8') : 'rgba(237,230,220,.92)';
+    var placeholderBg = state.border ? mixHex(bg, isLight, 0.1) : '#100d0c';
+    var strokeColor = state.border ? mixHex(bg, isLight, 0.18) : 'rgba(237,230,220,.14)';
+    var placeholderInk = state.border ? mixHex(bg, isLight, 0.32) : 'rgba(237,230,220,.18)';
+
+    stripCtx.fillStyle = bg;
+    stripCtx.fillRect(0, 0, geo.w, geo.h);
+
+    function drawPlaceholder(x, y, w, h, index){
+      stripCtx.fillStyle = placeholderInk;
+      stripCtx.font = '500 14px "Space Grotesk", sans-serif';
+      stripCtx.textAlign = 'center';
+      stripCtx.fillText('frame ' + (index + 1), x + w / 2, y + h / 2);
+      stripCtx.textAlign = 'left';
+    }
+
+    if (geo.mode === 'grid'){
+      for (var r = 0; r < 2; r++){
+        for (var c = 0; c < 2; c++){
+          var i = r * 2 + c;
+          var x = geo.margin + c * (geo.cellW + geo.gutter);
+          var y = geo.headerH + r * (geo.cellH + geo.gutter);
+
+          stripCtx.fillStyle = placeholderBg;
+          stripCtx.fillRect(x, y, geo.cellW, geo.cellH);
+
+          var shot = state.shots[i];
+          var drawn = shot && drawImageCover(stripCtx, shot.img, x, y, geo.cellW, geo.cellH);
+          if (!drawn) drawPlaceholder(x, y, geo.cellW, geo.cellH, i);
+
+          if (!state.border){
+            stripCtx.strokeStyle = strokeColor;
+            stripCtx.lineWidth = 1;
+            stripCtx.strokeRect(x + .5, y + .5, geo.cellW - 1, geo.cellH - 1);
+          }
+        }
+      }
+    } else {
+      /* symmetric column: equal margin left and right, no side numbering */
+      var x2 = geo.margin;
+      for (var i2 = 0; i2 < 4; i2++){
+        var y2 = geo.headerH + i2 * (geo.frameH + geo.gutter);
+
+        stripCtx.fillStyle = placeholderBg;
+        stripCtx.fillRect(x2, y2, geo.frameW, geo.frameH);
+
+        var shot2 = state.shots[i2];
+        var drawn2 = shot2 && drawImageCover(stripCtx, shot2.img, x2, y2, geo.frameW, geo.frameH);
+        if (!drawn2) drawPlaceholder(x2, y2, geo.frameW, geo.frameH, i2);
+
+        if (!state.border){
+          stripCtx.strokeStyle = strokeColor;
+          stripCtx.lineWidth = 1;
+          stripCtx.strokeRect(x2 + .5, y2 + .5, geo.frameW - 1, geo.frameH - 1);
+        }
+      }
+    }
+
+    if (geo.showChrome){
+      var footerTop = geo.h - geo.footerH;
+      var brand = (brandInput.value || 'chani._.uwu').trim() || 'chani._.uwu';
+      drawWordmark(stripCtx, brand, geo.w / 2, footerTop + 56, 40);
+
+      var caption = (captionInput.value || '').trim();
+      if (caption){
+        stripCtx.save();
+        stripCtx.font = '600 20px "Space Grotesk", sans-serif';
+        stripCtx.fillStyle = inkStrong;
+        stripCtx.textAlign = 'center';
+        wrapCenteredText(stripCtx, caption, geo.w / 2, footerTop + 118, geo.w - geo.margin * 2 - 16, 26);
+        stripCtx.restore();
+      }
+    }
+
+    drawStickers(stripCtx, geo);
+  }
+
+  /* ================= stickers ================= */
+  var HANDLE_R = 15; // canvas px, radius of each corner handle badge
+
+  /* every sticker is a center point (xFrac/yFrac, fractions of the canvas)
+     plus a scale (fraction of canvas width) and a rotation in radians —
+     storing it this way means it stays put proportionally even if the
+     layout/orientation/border settings change the canvas size later. */
+  function stickerGeometry(s, geo){
+    var w = s.scale * geo.w;
+    var h = w * (s.img.naturalHeight / s.img.naturalWidth);
+    return { w: w, h: h, cx: s.xFrac * geo.w, cy: s.yFrac * geo.h, rot: s.rotation || 0 };
+  }
+  function localToCanvas(g, lx, ly){
+    var cos = Math.cos(g.rot), sin = Math.sin(g.rot);
+    return { x: g.cx + lx * cos - ly * sin, y: g.cy + lx * sin + ly * cos };
+  }
+  function canvasToLocal(g, px, py){
+    var dx = px - g.cx, dy = py - g.cy;
+    var cos = Math.cos(-g.rot), sin = Math.sin(-g.rot);
+    return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
+  }
+  function stickerCorners(g){
+    var hw = g.w / 2, hh = g.h / 2;
+    return {
+      topLeft: localToCanvas(g, -hw, -hh),
+      topRight: localToCanvas(g, hw, -hh),
+      bottomRight: localToCanvas(g, hw, hh),
+      bottomLeft: localToCanvas(g, -hw, hh)
+    };
+  }
+  function ptDist(a, b){ return Math.hypot(a.x - b.x, a.y - b.y); }
+  function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+
+  function drawHandleBadge(ctx, pt, color, glyph){
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, HANDLE_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 15px "Space Grotesk", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(glyph, pt.x, pt.y + 1);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  }
+
+  function drawStickers(ctx, geo){
+    state.stickers.forEach(function(s, idx){
+      if (!s.img || !s.img.complete || !s.img.naturalWidth) return;
+      var g = stickerGeometry(s, geo);
+
+      ctx.save();
+      ctx.translate(g.cx, g.cy);
+      ctx.rotate(g.rot);
+      ctx.drawImage(s.img, -g.w / 2, -g.h / 2, g.w, g.h);
+      ctx.restore();
+
+      if (idx === state.selectedSticker){
+        var c = stickerCorners(g);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(242,183,5,.95)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.moveTo(c.topLeft.x, c.topLeft.y);
+        ctx.lineTo(c.topRight.x, c.topRight.y);
+        ctx.lineTo(c.bottomRight.x, c.bottomRight.y);
+        ctx.lineTo(c.bottomLeft.x, c.bottomLeft.y);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+
+        drawHandleBadge(ctx, c.topRight, '#e85d3d', '\u00D7');       // delete
+        drawHandleBadge(ctx, c.bottomRight, '#f2b705', '\u21F2');    // resize
+        drawHandleBadge(ctx, c.bottomLeft, '#f2b705', '\u27F3');     // rotate
+      }
+    });
+  }
+
+  function canvasPointFromClientXY(clientX, clientY){
+    var rect = stripCanvas.getBoundingClientRect();
+    var scaleX = stripCanvas.width / rect.width;
+    var scaleY = stripCanvas.height / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }
+
+  function hitTestSticker(px, py){
+    var geo = computeGeometry();
+    for (var i = state.stickers.length - 1; i >= 0; i--){
+      var g = stickerGeometry(state.stickers[i], geo);
+      var lp = canvasToLocal(g, px, py);
+      if (Math.abs(lp.x) <= g.w / 2 && Math.abs(lp.y) <= g.h / 2) return i;
+    }
+    return -1;
+  }
+
+  function updateStickerHint(){
+    stickerHint.style.display = state.stickers.length ? '' : 'none';
+  }
+
+  function removeSticker(idx){
+    state.stickers.splice(idx, 1);
+    state.selectedSticker = null;
+    updateStickerHint();
     drawStrip();
+  }
+
+  addStickerBtn.addEventListener('click', function(){ stickerFileInput.click(); });
+  stickerFileInput.addEventListener('change', function(){
+    var files = Array.prototype.slice.call(stickerFileInput.files || []);
+    files.forEach(function(file){
+      if (!/^image\//.test(file.type)) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          var offset = (state.stickers.length % 5) * 0.06;
+          state.stickers.push({
+            img: img,
+            xFrac: Math.min(0.8, 0.5 + offset),
+            yFrac: Math.min(0.8, 0.42 + offset),
+            scale: 0.28,
+            rotation: 0
+          });
+          state.selectedSticker = state.stickers.length - 1;
+          updateStickerHint();
+          drawStrip();
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    stickerFileInput.value = '';
+  });
+
+  /* pointer events unify mouse + touch so this works the same on phone
+     and desktop. Dragging the sticker body moves it; the three corner
+     handles (only shown on the selected sticker) delete, resize, or
+     rotate it. */
+  var stickerDrag = {
+    active: false, mode: null, index: -1,
+    offsetX: 0, offsetY: 0,
+    startAngle: 0, startRotation: 0
+  };
+
+  stripCanvas.addEventListener('pointerdown', function(e){
+    var pt = canvasPointFromClientXY(e.clientX, e.clientY);
+    var geo = computeGeometry();
+
+    if (state.selectedSticker != null && state.stickers[state.selectedSticker]){
+      var s = state.stickers[state.selectedSticker];
+      var g = stickerGeometry(s, geo);
+      var c = stickerCorners(g);
+
+      /* only treat a tap near a handle as hitting that handle if nothing
+         else is drawn on top of it there — otherwise selecting/dragging a
+         different overlapping sticker could wrongly trigger the old
+         selection's handle instead */
+      var topmostHere = hitTestSticker(pt.x, pt.y);
+      var otherOnTop = (topmostHere !== -1 && topmostHere !== state.selectedSticker);
+
+      if (!otherOnTop){
+        if (ptDist(pt, c.topRight) <= HANDLE_R + 6){
+          removeSticker(state.selectedSticker);
+          return;
+        }
+        if (ptDist(pt, c.bottomRight) <= HANDLE_R + 6){
+          stickerDrag.active = true;
+          stickerDrag.mode = 'resize';
+          stickerDrag.index = state.selectedSticker;
+          try { stripCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+          return;
+        }
+        if (ptDist(pt, c.bottomLeft) <= HANDLE_R + 6){
+          stickerDrag.active = true;
+          stickerDrag.mode = 'rotate';
+          stickerDrag.index = state.selectedSticker;
+          stickerDrag.startAngle = Math.atan2(pt.y - g.cy, pt.x - g.cx);
+          stickerDrag.startRotation = g.rot;
+          try { stripCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+          return;
+        }
+      }
+    }
+
+    var idx = hitTestSticker(pt.x, pt.y);
+    if (idx >= 0){
+      state.selectedSticker = idx;
+      var gg = stickerGeometry(state.stickers[idx], geo);
+      stickerDrag.active = true;
+      stickerDrag.mode = 'move';
+      stickerDrag.index = idx;
+      stickerDrag.offsetX = pt.x - gg.cx;
+      stickerDrag.offsetY = pt.y - gg.cy;
+      try { stripCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+    } else {
+      state.selectedSticker = null;
+    }
+    drawStrip();
+  });
+
+  stripCanvas.addEventListener('pointermove', function(e){
+    if (!stickerDrag.active) return;
+    var pt = canvasPointFromClientXY(e.clientX, e.clientY);
+    var geo = computeGeometry();
+    var s = state.stickers[stickerDrag.index];
+    if (!s) return;
+
+    if (stickerDrag.mode === 'move'){
+      s.xFrac = clamp01((pt.x - stickerDrag.offsetX) / geo.w);
+      s.yFrac = clamp01((pt.y - stickerDrag.offsetY) / geo.h);
+    } else if (stickerDrag.mode === 'resize'){
+      var g = stickerGeometry(s, geo);
+      var ratio = s.img.naturalHeight / s.img.naturalWidth;
+      var diagFactor = Math.sqrt(1 + ratio * ratio);
+      var d = Math.hypot(pt.x - g.cx, pt.y - g.cy);
+      var newScale = (d * 2 / diagFactor) / geo.w;
+      s.scale = Math.max(0.04, Math.min(0.95, newScale));
+    } else if (stickerDrag.mode === 'rotate'){
+      var g2 = stickerGeometry(s, geo);
+      var angleNow = Math.atan2(pt.y - g2.cy, pt.x - g2.cx);
+      s.rotation = stickerDrag.startRotation + (angleNow - stickerDrag.startAngle);
+    }
+    drawStrip();
+  });
+
+  function endStickerDrag(){ stickerDrag.active = false; stickerDrag.mode = null; stickerDrag.index = -1; }
+  stripCanvas.addEventListener('pointerup', endStickerDrag);
+  stripCanvas.addEventListener('pointercancel', endStickerDrag);
+
+  /* ================= share / print ================= */
+  /* renders without the sticker selection outline/handles so exported
+     images never include editing chrome, then restores the on-screen view */
+  function renderForExport(){
+    var prevSelected = state.selectedSticker;
+    state.selectedSticker = null;
+    drawStrip();
+    return function restore(){
+      state.selectedSticker = prevSelected;
+      drawStrip();
+    };
+  }
+
+
+  function shareStrip(){
+    var restore = renderForExport();
     stripCanvas.toBlob(function(blob){
+      restore();
       if (!blob) return;
       var brand = (brandInput.value || 'booth').trim() || 'booth';
       var file = new File([blob], brand + '-strip.png', { type:'image/png' });
@@ -935,12 +1509,33 @@
   }
 
   function printStrip(){
-    drawStrip();
+    var restore = renderForExport();
     printImg.src = stripCanvas.toDataURL('image/png');
+    restore();
     window.print();
   }
 
+  function saveStrip(){
+    var restore = renderForExport();
+    stripCanvas.toBlob(function(blob){
+      restore();
+      if (!blob) return;
+      var brand = (brandInput.value || 'booth').trim() || 'booth';
+      var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = brand + '-strip-' + stamp + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // give the browser a moment to start the download before revoking
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    }, 'image/png');
+  }
+
   shareBtn.addEventListener('click', shareStrip);
+  saveBtn.addEventListener('click', saveStrip);
   printBtn.addEventListener('click', printStrip);
 
   /* the Web Share API (with file support) is common on iOS/Android but

@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Booth</title>
+
+<!-- iOS "add to home screen" app behavior -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Booth" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#171412" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+  :root{
+    --bg:#171412;
+    --panel:#221e1b;
+    --panel-2:#2b2622;
+    --ink:#ede6dc;
+    --ink-dim:#a79e93;
+    --amber:#d9a441;
+    --brick:#b23a2e;
+    --line:#3a332c;
+    --focus:#7fb8ff;
+    --sat:env(safe-area-inset-top, 0px);
+    --sar:env(safe-area-inset-right, 0px);
+    --sab:env(safe-area-inset-bottom, 0px);
+    --sal:env(safe-area-inset-left, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0;
+    height:100%;
+    overscroll-behavior:none;
+  }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Space Grotesk', system-ui, sans-serif;
+    height:100dvh;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  button{font-family:inherit; border:none; background:none; color:inherit;}
+  input{font-family:inherit;}
+  button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:2px;
+  }
+
+  .app{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    padding-top:var(--sat);
+    padding-left:var(--sal);
+    padding-right:var(--sar);
+  }
+
+  /* ---------------- shared bits ---------------- */
+  .icon-btn{
+    width:44px; height:44px;
+    border-radius:50%;
+    background:rgba(255,255,255,.08);
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px;
+  }
+  .icon-btn:active{background:rgba(255,255,255,.16);}
+
+  /* ================= CAMERA VIEW ================= */
+  .view-camera{
+    flex:1;
+    position:relative;
+    min-height:0;
+    overflow:hidden;
+  }
+  .cam-topbar{
+    position:absolute;
+    top:0; left:0; right:0;
+    z-index:5;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 14px 26px;
+    gap:10px;
+    background:linear-gradient(rgba(0,0,0,.6), rgba(0,0,0,0));
+  }
+  .brand-chip{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,.06);
+    border-radius:999px;
+    padding:6px 14px 6px 8px;
+  }
+  .brand-chip .wordmark{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:17px;
+  }
+  .brand-chip .edit-glyph{font-size:12px; color:var(--ink-dim);}
+  .status-dot-wrap{
+    display:flex; align-items:center; gap:6px;
+    font-size:11px; color:var(--ink-dim);
+    font-family:'JetBrains Mono', monospace;
+  }
+  .timer-toggle{
+    display:flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,.08);
+    border-radius:999px;
+    padding:8px 13px;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink-dim);
+    flex:0 0 auto;
+  }
+  .timer-toggle:active{background:rgba(255,255,255,.16);}
+  .timer-toggle.on{color:var(--amber);}
+  .timer-toggle.off{opacity:.55;}
+  .timer-toggle.off #timerToggleIcon{opacity:.6;}
+  .status-dot{width:7px; height:7px; border-radius:50%; background:#6a6259;}
+  .status-dot.live{background:#5fd07a;}
+
+  .cam-stage{
+    position:absolute; inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .camera-wrap{
+    position:relative;
+    width:100%;
+    max-height:100%;
+    aspect-ratio:3/4;
+    background:#0c0a09;
+    border-radius:18px;
+    overflow:hidden;
+    margin:auto;
+  }
+  video{
+    width:100%; height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  video.mirror{transform:scaleX(-1);}
+
+  .camera-empty, .camera-error{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:24px;
+    color:var(--ink-dim);
+  }
+  .camera-error{background:rgba(12,10,9,.94); display:none;}
+  .camera-empty p, .camera-error p{margin:0; font-size:13.5px; max-width:30ch; line-height:1.5;}
+
+  .flash{position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none;}
+  .flash.go{animation:flashfade .35s ease-out;}
+  @keyframes flashfade{0%{opacity:.9;} 100%{opacity:0;}}
+
+  .countdown{position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;}
+  .countdown span{
+    font-family:'Baloo 2', sans-serif; font-weight:800;
+    font-size:min(28vw, 130px); color:#fff;
+    text-shadow:0 0 30px rgba(0,0,0,.55);
+    animation:pop .5s ease;
+  }
+  @keyframes pop{from{transform:scale(.6); opacity:0;} to{transform:scale(1); opacity:1;}}
+
+  .pose-msg{
+    position:absolute; left:0; right:0; bottom:190px;
+    padding:10px 14px;
+    background:linear-gradient(transparent, rgba(0,0,0,.65));
+    font-size:13px; color:#fff; text-align:center; font-weight:500;
+  }
+  .shot-dots{position:absolute; top:64px; right:12px; display:none; gap:6px;}
+  .shot-dots i{width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.28); display:block;}
+  .shot-dots i.filled{background:#fff;}
+
+  .cam-bottom-overlay{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    z-index:5;
+    background:linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.65) 45%);
+    padding-top:30px;
+  }
+
+  .filters{
+    display:flex; gap:8px; overflow-x:auto;
+    padding:10px 14px 4px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .filters::-webkit-scrollbar{display:none;}
+  .filter-chip{
+    flex:0 0 auto;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink-dim);
+    padding:7px 14px;
+    border-radius:999px;
+    font-size:12.5px;
+    white-space:nowrap;
+  }
+  .filter-chip.active{color:var(--bg); background:var(--amber); border-color:var(--amber); font-weight:600;}
+
+  .softness-row{
+    display:flex; align-items:center; gap:10px;
+    padding:6px 18px 8px;
+  }
+  .softness-label{font-size:12px; color:var(--ink-dim); flex:0 0 auto;}
+  .softness-value{font-size:11.5px; color:var(--ink-dim); font-family:'JetBrains Mono', monospace; flex:0 0 34px; text-align:right;}
+  .softness-row input[type="range"]{
+    flex:1;
+    -webkit-appearance:none; appearance:none;
+    height:4px; border-radius:999px;
+    background:var(--line);
+    outline:none;
+  }
+  .softness-row input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:18px; height:18px; border-radius:50%;
+    background:var(--amber);
+    border:2px solid var(--bg);
+  }
+  .softness-row input[type="range"]::-moz-range-thumb{
+    width:18px; height:18px; border-radius:50%;
+    background:var(--amber);
+    border:2px solid var(--bg);
+  }
+
+  .cam-bottombar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 22px calc(16px + var(--sab));
+  }
+  .shutter-wrap{display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .shutter{
+    width:74px; height:74px;
+    border-radius:50%;
+    background:#fff;
+    border:4px solid rgba(255,255,255,.35);
+    padding:4px;
+  }
+  .shutter::after{
+    content:'';
+    display:block;
+    width:100%; height:100%;
+    border-radius:50%;
+    background:var(--brick);
+  }
+  .shutter:disabled{opacity:.4;}
+  .shutter-label{font-size:11px; color:var(--ink-dim); font-family:'JetBrains Mono', monospace;}
+
+  .review-jump{
+    width:52px; height:52px;
+    border-radius:12px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    background-size:cover;
+    background-position:center;
+    position:relative;
+  }
+  .review-jump span{
+    position:absolute; bottom:2px; right:4px;
+    font-size:9px; font-family:'JetBrains Mono', monospace;
+    color:rgba(255,255,255,.8);
+  }
+
+  /* ================= REVIEW VIEW ================= */
+  .view-review{
+    flex:1;
+    display:none;
+    flex-direction:column;
+    min-height:0;
+  }
+  body.mode-review .view-review{display:flex;}
+  body.mode-review .view-camera{display:none;}
+
+  .review-topbar{
+    display:flex; align-items:center; gap:12px;
+    padding:10px 14px;
+  }
+  .review-topbar h2{font-size:14px; margin:0; font-weight:600; color:var(--ink-dim);}
+
+  .strip-scroll{
+    flex:1; min-height:0;
+    overflow:auto;
+    display:flex; justify-content:center;
+    padding:8px 14px;
+  }
+  #stripCanvas{max-width:100%; height:auto; border-radius:10px; display:block; touch-action:none;}
+
+  .sticker-bar{
+    display:flex; justify-content:center;
+    padding:8px 18px 0;
+  }
+  .sticker-bar .btn{padding:9px 16px; font-size:13px;}
+  .sticker-hint{
+    text-align:center; font-size:11px; color:var(--ink-dim);
+    padding:6px 18px 0;
+  }
+
+  .frame-list{display:flex; gap:8px; padding:8px 14px; justify-content:center;}
+  .frame-thumb{
+    width:46px; height:60px; border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    background-size:cover; background-position:center;
+    position:relative;
+  }
+  .frame-thumb span{
+    position:absolute; bottom:2px; right:4px;
+    font-size:9px; font-family:'JetBrains Mono', monospace;
+    color:rgba(255,255,255,.75);
+  }
+
+  .review-hint{
+    text-align:center; font-size:11.5px; color:var(--ink-dim);
+    padding:0 20px 4px;
+  }
+
+  .review-bottombar{
+    display:flex; flex-direction:column; gap:10px;
+    padding:10px 18px calc(16px + var(--sab));
+  }
+  .btn{
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink);
+    padding:14px 18px;
+    border-radius:14px;
+    font-size:15px; font-weight:600;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn.primary{background:var(--amber); border-color:var(--amber); color:#171412;}
+  .btn.ghost{background:transparent; color:var(--ink-dim); font-weight:500; padding:8px;}
+  .btn:active{transform:scale(.98);}
+  .btn-row{display:flex; gap:8px;}
+  .btn-row .btn{flex:1; padding:14px 10px; font-size:14px;}
+  .share-note{text-align:center; font-size:11px; color:var(--ink-dim); margin:-2px 0 2px;}
+
+  /* ================= EDIT SHEET ================= */
+  .sheet-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.55);
+    display:none; align-items:flex-end; justify-content:center;
+    z-index:20;
+  }
+  body.sheet-open .sheet-backdrop{display:flex;}
+  .sheet{
+    width:100%; max-width:520px;
+    background:var(--panel);
+    border-radius:20px 20px 0 0;
+    padding:18px 18px calc(18px + var(--sab));
+  }
+  .sheet h3{margin:0 0 14px; font-size:14px; color:var(--ink-dim); font-weight:600;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:11.5px; color:var(--ink-dim); margin-bottom:6px;}
+  .field input{
+    width:100%; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--ink); padding:12px; border-radius:10px; font-size:15px;
+  }
+  .sheet .btn{margin-top:4px;}
+  .segmented{
+    display:flex;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .seg-btn{
+    flex:1;
+    padding:11px 6px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-dim);
+    background:transparent;
+    text-align:center;
+  }
+  .seg-btn.active{background:var(--amber); color:#171412;}
+  .seg-btn:not(:last-child){border-right:1px solid var(--line);}
+  .color-row{display:flex; align-items:center; gap:10px;}
+  .color-row input[type="color"]{
+    width:48px; height:44px; padding:0; border:1px solid var(--line);
+    border-radius:10px; background:none; flex:0 0 auto;
+  }
+  .color-row input[type="text"]{
+    flex:1; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--ink); padding:12px; border-radius:10px; font-size:15px;
+    font-family:'JetBrains Mono', monospace; text-transform:uppercase;
+  }
+
+  /* ================= PRINT ================= */
+  #printArea{display:none;}
+  @media print{
+    /* asks capable printers/PDF export for the exact 4R sheet size;
+       mobile print pipelines that ignore this still get a correctly
+       proportioned, edge-to-edge image from the 100% sizing below */
+    @page{ size:10.2cm 15.2cm; margin:0; }
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{
+      display:flex; position:fixed; inset:0;
+      align-items:center; justify-content:center;
+      width:100%; height:100%;
+    }
+    /* the sheet image is already rendered at the exact 10.2x15.2cm ratio
+       (two strips side by side), so it fills whatever page it lands on */
+    #printImg{width:100%; height:100%; max-width:none; max-height:none; object-fit:fill;}
+  }
+</style>
+</head>
+<body class="mode-camera">
+
+<div class="app">
+
+  <!-- ================= CAMERA VIEW ================= -->
+  <div class="view-camera">
+    <div class="cam-topbar">
+      <button class="brand-chip" id="brandChipBtn" type="button">
+        <span class="wordmark" id="wordmarkPreview">chani._.uwu</span>
+        <span class="edit-glyph">edit ✎</span>
+      </button>
+      <button class="timer-toggle on" id="timerToggleBtn" type="button" aria-pressed="true">
+        <span id="timerToggleIcon">⏱</span><span id="timerToggleLabel">3s</span>
+      </button>
+
+      <div class="status-dot-wrap">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">camera off</span>
+      </div>
+    </div>
+
+    <div class="cam-stage">
+      <div class="camera-wrap" id="cameraWrap">
+        <video id="video" autoplay playsinline muted class="mirror"></video>
+
+        <div class="camera-empty" id="cameraEmpty">
+          <p>Turn on the camera to start a 4-shot session.</p>
+          <button class="btn primary" id="enableCamBtn" type="button">Turn on camera</button>
+        </div>
+
+        <div class="camera-error" id="cameraError">
+          <p id="cameraErrorText">Camera access was blocked. Check your browser's site settings to allow camera access, then reload.</p>
+          <button class="btn" id="retryCamBtn" type="button">Try again</button>
+        </div>
+
+        <div class="flash" id="flash"></div>
+        <div class="countdown" id="countdown"><span id="countdownNum">3</span></div>
+        <div class="shot-dots" id="shotDots"><i></i><i></i><i></i><i></i></div>
+        <div class="pose-msg" id="poseMsg" style="display:none;"></div>
+
+        <button class="icon-btn" id="flipCamBtn" type="button" style="position:absolute; top:64px; right:10px; display:none;">⟳</button>
+      </div>
+    </div>
+
+    <div class="cam-bottom-overlay">
+      <div class="filters" id="filters"></div>
+
+      <div class="softness-row">
+        <span class="softness-label">Softness</span>
+        <input type="range" id="softnessSlider" min="0" max="100" value="0" step="5" />
+        <span class="softness-value" id="softnessValue">0%</span>
+      </div>
+
+      <div class="cam-bottombar">
+        <button class="review-jump" id="reviewJumpBtn" type="button" style="visibility:hidden;"><span id="reviewJumpCount">0/4</span></button>
+
+        <div class="shutter-wrap">
+          <button class="shutter" id="shutterBtn" type="button" disabled></button>
+          <span class="shutter-label" id="shutterLabel">turn on camera</span>
+        </div>
+
+        <div style="width:52px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= REVIEW VIEW ================= -->
+  <div class="view-review">
+    <div class="review-topbar">
+      <button class="icon-btn" id="backToCamBtn" type="button">←</button>
+      <h2>your strip</h2>
+      <button class="icon-btn" id="customizeBtn" type="button" style="margin-left:auto;">✎</button>
+    </div>
+
+    <div class="strip-scroll">
+      <canvas id="stripCanvas" width="620" height="1180"></canvas>
+    </div>
+
+    <div class="sticker-bar">
+      <button class="btn ghost" id="addStickerBtn" type="button">🏷 Add sticker</button>
+      <input type="file" id="stickerFileInput" accept="image/*" multiple style="display:none;" />
+    </div>
+    <p class="sticker-hint" id="stickerHint" style="display:none;">Drag to move · corner handles resize, rotate, delete</p>
+
+    <div class="frame-list" id="frameList">
+      <div class="frame-thumb" data-i="0"><span>1</span></div>
+      <div class="frame-thumb" data-i="1"><span>2</span></div>
+      <div class="frame-thumb" data-i="2"><span>3</span></div>
+      <div class="frame-thumb" data-i="3"><span>4</span></div>
+    </div>
+    <p class="review-hint">Tap a frame to retake just that shot.</p>
+
+    <div class="review-bottombar">
+      <p class="share-note" id="shareNote">Share opens your device's share sheet.</p>
+      <div class="btn-row">
+        <button class="btn primary" id="shareBtn" type="button">⬆︎ Share</button>
+        <button class="btn" id="saveBtn" type="button">⬇︎ Save</button>
+        <button class="btn" id="printBtn" type="button">🖨 Print</button>
+      </div>
+      <button class="btn ghost" id="newSessionBtn" type="button">Start a new session</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================= EDIT SHEET ================= -->
+<div class="sheet-backdrop" id="sheetBackdrop">
+  <div class="sheet">
+    <h3>customize your strip</h3>
+
+    <div class="field">
+      <label>Layout</label>
+      <div class="segmented" id="layoutSeg">
+        <button type="button" class="seg-btn active" data-val="strip">Long strip</button>
+        <button type="button" class="seg-btn" data-val="grid">2×2 grid</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Border</label>
+      <div class="segmented" id="borderSeg">
+        <button type="button" class="seg-btn active" data-val="on">Border</button>
+        <button type="button" class="seg-btn" data-val="off">No border</button>
+      </div>
+    </div>
+
+    <div class="field" id="borderColorField">
+      <label>Border color</label>
+      <div class="color-row">
+        <input type="color" id="borderColorPicker" value="#ffffff" />
+        <input type="text" id="borderColorHex" value="#FFFFFF" maxlength="7" spellcheck="false" autocapitalize="off" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="brandInput">Wordmark (top of strip)</label>
+      <input id="brandInput" type="text" maxlength="16" value="chani._.uwu" />
+    </div>
+    <div class="field">
+      <label for="captionInput">Caption (bottom of strip)</label>
+      <input id="captionInput" type="text" maxlength="40" value="specialty coffee + matcha" />
+    </div>
+    <button class="btn primary" id="sheetDoneBtn" type="button">Done</button>
+  </div>
+</div>
+
+<!-- ================= PRINT AREA ================= -->
+<div id="printArea"><img id="printImg" alt="" /></div>
+
+<script>
+(function(){
+
+  /* ================= config ================= */
+  var FILTERS = [
+    { id:'normal', label:'Normal',        css:'',                              canvas:'' },
+    { id:'bw',     label:'Black & White', css:'grayscale(1) contrast(1.1)',   canvas:'grayscale(1) contrast(1.1)' },
+    { id:'sepia',  label:'Sepia',         css:'sepia(.75) contrast(1.05)',    canvas:'sepia(.75) contrast(1.05)' }
+  ];
+  var LETTER_COLORS = ['#4e8cff', '#e85d3d', '#f2b705', '#3eaf60', '#b23a2e'];
+
+  /* camera aspect ratio starts at a sane default, gets corrected to the
+     real device stream as soon as we know it — used only to keep the
+     live preview box and capture resolution matched to the camera;
+     the final strip/grid crops each shot to whatever shape the chosen
+     layout needs at draw time, so this never distorts the output. */
+  var camAspect = 3 / 4; // width / height
+  var ASPECT_PORTRAIT = 3 / 4;   // w/h — taller than wide
+  var ASPECT_LANDSCAPE = 4 / 3;  // w/h — wider than tall
+
+  /* this is the exact shape each photo ends up as in the finished strip
+     (same logic computeGeometry uses) — the live preview and the actual
+     captured shot are both locked to it so what you see is what you get. */
+  function getFrameAspect(){
+    return state.orientation === 'landscape' ? ASPECT_LANDSCAPE : ASPECT_PORTRAIT;
+  }
+  function syncCameraAspect(){
+    camAspect = getFrameAspect();
+    cameraWrap.style.aspectRatio = camAspect.toFixed(4) + ' / 1';
+  }
+
+  /* the print sheet is a real 4R (10.2cm x 15.2cm) portrait photo paper —
+     two copies of the strip sit side by side, each filling a 5.1cm wide
+     (half the sheet) x 15.2cm tall cell, the classic photo-booth layout. */
+  var PAPER_W_CM = 10.2;
+  var PAPER_H_CM = 15.2;
+  var PRINT_DPI = 300;
+  function cmToPx(cm){ return Math.round(cm / 2.54 * PRINT_DPI); }
+
+  /* ================= state ================= */
+  var state = {
+    activeFilter: 'normal',
+    stream: null,
+    facingMode: 'user',
+    shots: [null, null, null, null],
+    sessionRunning: false,
+    retakeIndex: null,
+    timerEnabled: true,
+    softness: 0,
+    orientation: 'portrait', // corrected immediately below from the real device orientation
+    layout: 'strip',
+    border: true,
+    borderColor: '#ffffff',
+    stickers: [],
+    selectedSticker: null
+  };
+
+  /* orientation now follows the device instead of a manual toggle */
+  function detectOrientation(){
+    if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return 'landscape';
+    if (window.innerWidth && window.innerHeight) return window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+    return 'portrait';
+  }
+  state.orientation = detectOrientation();
+
+  /* ================= elements ================= */
+  var video = document.getElementById('video');
+  var cameraWrap = document.getElementById('cameraWrap');
+  syncCameraAspect();
+  var cameraEmpty = document.getElementById('cameraEmpty');
+  var cameraError = document.getElementById('cameraError');
+  var cameraErrorText = document.getElementById('cameraErrorText');
+  var enableCamBtn = document.getElementById('enableCamBtn');
+  var retryCamBtn = document.getElementById('retryCamBtn');
+  var flipCamBtn = document.getElementById('flipCamBtn');
+  var statusDot = document.getElementById('statusDot');
+  var statusText = document.getElementById('statusText');
+  var timerToggleBtn = document.getElementById('timerToggleBtn');
+  var timerToggleLabel = document.getElementById('timerToggleLabel');
+  var filtersEl = document.getElementById('filters');
+  var shutterBtn = document.getElementById('shutterBtn');
+  var shutterLabel = document.getElementById('shutterLabel');
+  var reviewJumpBtn = document.getElementById('reviewJumpBtn');
+  var reviewJumpCount = document.getElementById('reviewJumpCount');
+  var brandChipBtn = document.getElementById('brandChipBtn');
+  var wordmarkPreview = document.getElementById('wordmarkPreview');
+  var brandInput = document.getElementById('brandInput');
+  var captionInput = document.getElementById('captionInput');
+  var sheetBackdrop = document.getElementById('sheetBackdrop');
+  var sheetDoneBtn = document.getElementById('sheetDoneBtn');
+  var stripCanvas = document.getElementById('stripCanvas');
+  var stripCtx = stripCanvas.getContext('2d');
+  var frameList = document.getElementById('frameList');
+  var backToCamBtn = document.getElementById('backToCamBtn');
+  var shareBtn = document.getElementById('shareBtn');
+  var saveBtn = document.getElementById('saveBtn');
+  var printBtn = document.getElementById('printBtn');
+  var newSessionBtn = document.getElementById('newSessionBtn');
+  var flashEl = document.getElementById('flash');
+  var countdownEl = document.getElementById('countdown');
+  var countdownNum = document.getElementById('countdownNum');
+  var shotDots = document.getElementById('shotDots');
+  var poseMsg = document.getElementById('poseMsg');
+  var printImg = document.getElementById('printImg');
+  var shareNote = document.getElementById('shareNote');
+  var softnessSlider = document.getElementById('softnessSlider');
+  var softnessValue = document.getElementById('softnessValue');
+  var customizeBtn = document.getElementById('customizeBtn');
+  var layoutSeg = document.getElementById('layoutSeg');
+  var borderSeg = document.getElementById('borderSeg');
+  var borderColorField = document.getElementById('borderColorField');
+  var borderColorPicker = document.getElementById('borderColorPicker');
+  var borderColorHex = document.getElementById('borderColorHex');
+  var addStickerBtn = document.getElementById('addStickerBtn');
+  var stickerFileInput = document.getElementById('stickerFileInput');
+  var stickerHint = document.getElementById('stickerHint');
+
+  /* stripCanvas is sized dynamically inside drawStrip() based on the
+     chosen orientation/layout/border, so no fixed size is set here. */
+
+  /* ================= filter chips + softness ================= */
+  function applyPreviewFilter(){
+    var f = FILTERS.filter(function(x){ return x.id === state.activeFilter; })[0];
+    var parts = [];
+    if (f && f.css && f.css !== 'none') parts.push(f.css);
+    if (state.softness > 0) parts.push('blur(' + (state.softness / 100 * 2.5).toFixed(2) + 'px)');
+    video.style.filter = parts.join(' ');
+  }
+
+  FILTERS.forEach(function(f){
+    var chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'filter-chip' + (f.id === state.activeFilter ? ' active' : '');
+    chip.textContent = f.label;
+    chip.addEventListener('click', function(){
+      state.activeFilter = f.id;
+      Array.prototype.forEach.call(filtersEl.children, function(c){ c.classList.remove('active'); });
+      chip.classList.add('active');
+      applyPreviewFilter();
+    });
+    filtersEl.appendChild(chip);
+  });
+
+  softnessSlider.addEventListener('input', function(){
+    state.softness = parseInt(softnessSlider.value, 10) || 0;
+    softnessValue.textContent = state.softness + '%';
+    applyPreviewFilter();
+  });
+
+  applyPreviewFilter();
+
+  /* ================= timer toggle ================= */
+  function updateTimerToggle(){
+    timerToggleBtn.classList.toggle('on', state.timerEnabled);
+    timerToggleBtn.classList.toggle('off', !state.timerEnabled);
+    timerToggleLabel.textContent = state.timerEnabled ? '3s' : 'off';
+    timerToggleBtn.setAttribute('aria-pressed', state.timerEnabled ? 'true' : 'false');
+  }
+  timerToggleBtn.addEventListener('click', function(){
+    state.timerEnabled = !state.timerEnabled;
+    updateTimerToggle();
+  });
+  updateTimerToggle();
+
+  /* ================= camera ================= */
+  function stopStream(){
+    if (state.stream){
+      state.stream.getTracks().forEach(function(t){ t.stop(); });
+      state.stream = null;
+    }
+  }
+
+  function startCamera(){
+    cameraError.style.display = 'none';
+    if (window.isSecureContext === false){
+      showCameraError('Camera access needs a secure page (https://) to work. Opening this file directly on your phone (file://) blocks it before Chrome can even ask for permission — host this file online (e.g. GitHub Pages, Netlify Drop, or Vercel) and open it from that https:// link instead.');
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showCameraError('This browser does not support camera capture. Try a recent version of Chrome or Safari, and make sure the page is loaded over https://.');
+      return;
+    }
+    stopStream();
+    var constraints = {
+      video:{
+        facingMode: state.facingMode,
+        width:{ ideal: 1170 },
+        height:{ ideal: 1560 }
+      },
+      audio:false
+    };
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(function(stream){
+        state.stream = stream;
+        video.srcObject = stream;
+        video.classList.toggle('mirror', state.facingMode === 'user');
+        cameraEmpty.style.display = 'none';
+        statusDot.classList.add('live');
+        statusText.textContent = 'camera live';
+        shutterBtn.disabled = false;
+        shutterLabel.textContent = 'tap to start';
+        flipCamBtn.style.display = 'flex';
+      })
+      .catch(function(err){
+        var msg = 'Camera access was blocked. Check your browser\'s site settings to allow camera access, then reload.';
+        if (err && err.name === 'NotFoundError') msg = 'No camera was found on this device.';
+        if (err && err.name === 'NotAllowedError') msg = 'Camera permission was denied. Click the camera icon in your browser\'s address bar (or check Settings) to allow access, then reload.';
+        if (err && err.name === 'OverconstrainedError'){
+          // retry once without exact ideal sizes
+          return navigator.mediaDevices.getUserMedia({ video:{ facingMode: state.facingMode }, audio:false })
+            .then(function(stream){
+              state.stream = stream;
+              video.srcObject = stream;
+              video.classList.toggle('mirror', state.facingMode === 'user');
+              cameraEmpty.style.display = 'none';
+              statusDot.classList.add('live');
+              statusText.textContent = 'camera live';
+              shutterBtn.disabled = false;
+              shutterLabel.textContent = 'tap to start';
+              flipCamBtn.style.display = 'flex';
+            })
+            .catch(function(){ showCameraError(msg); });
+        }
+        showCameraError(msg);
+      });
+  }
+
+  function showCameraError(msg){
+    cameraErrorText.textContent = msg;
+    cameraError.style.display = 'flex';
+    cameraEmpty.style.display = 'none';
+    statusDot.classList.remove('live');
+    statusText.textContent = 'camera unavailable';
+  }
+
+  enableCamBtn.addEventListener('click', startCamera);
+  retryCamBtn.addEventListener('click', startCamera);
+  flipCamBtn.addEventListener('click', function(){
+    state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+    startCamera();
+  });
+
+  /* ================= capture flow ================= */
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function runCountdown(seconds){
+    if (!state.timerEnabled){
+      countdownEl.style.display = 'none';
+      return wait(150);
+    }
+    countdownEl.style.display = 'flex';
+    var n = seconds;
+    countdownNum.textContent = n;
+    return new Promise(function(resolve){
+      var iv = setInterval(function(){
+        n -= 1;
+        if (n <= 0){
+          clearInterval(iv);
+          countdownEl.style.display = 'none';
+          resolve();
+        } else {
+          countdownNum.textContent = n;
+          countdownNum.style.animation = 'none';
+          void countdownNum.offsetWidth;
+          countdownNum.style.animation = '';
+        }
+      }, 1000);
+    });
+  }
+
+  function flash(){
+    flashEl.classList.remove('go');
+    void flashEl.offsetWidth;
+    flashEl.classList.add('go');
+  }
+
+  function captureFrame(){
+    var off = document.createElement('canvas');
+    off.width = 920;
+    off.height = Math.round(off.width / camAspect);
+    var octx = off.getContext('2d');
+    var f = FILTERS.filter(function(x){ return x.id === state.activeFilter; })[0];
+    var colorCss = (f && f.css && f.css !== 'none') ? f.css : '';
+    octx.filter = colorCss || 'none';
+
+    var vw = video.videoWidth, vh = video.videoHeight;
+    var targetRatio = off.width / off.height;
+    var srcRatio = vw / vh;
+    var sx, sy, sw, sh;
+    if (srcRatio > targetRatio){
+      sh = vh; sw = vh * targetRatio; sx = (vw - sw) / 2; sy = 0;
+    } else {
+      sw = vw; sh = vw / targetRatio; sx = 0; sy = (vh - sh) / 2;
+    }
+
+    octx.save();
+    if (state.facingMode === 'user'){
+      octx.translate(off.width, 0);
+      octx.scale(-1, 1);
+    }
+    octx.drawImage(video, sx, sy, sw, sh, 0, 0, off.width, off.height);
+    octx.restore();
+
+    /* soft-focus pass: blend a blurred copy on top, masked so it's
+       strongest around where a face usually sits in the frame (upper-
+       center) and fades toward the edges — smooths skin texture without
+       flattening the whole image into a uniform blur. */
+    var softness = state.softness / 100;
+    if (softness > 0){
+      var blurPx = softness * off.width * 0.035;
+      var blurLayer = document.createElement('canvas');
+      blurLayer.width = off.width;
+      blurLayer.height = off.height;
+      var bctx = blurLayer.getContext('2d');
+      bctx.filter = (colorCss ? colorCss + ' ' : '') + 'blur(' + blurPx.toFixed(1) + 'px)';
+      bctx.save();
+      if (state.facingMode === 'user'){
+        bctx.translate(off.width, 0);
+        bctx.scale(-1, 1);
+      }
+      bctx.drawImage(video, sx, sy, sw, sh, 0, 0, off.width, off.height);
+      bctx.restore();
+
+      bctx.filter = 'none';
+      bctx.globalCompositeOperation = 'destination-in';
+      var g = bctx.createRadialGradient(
+        off.width / 2, off.height * 0.42, off.height * 0.06,
+        off.width / 2, off.height * 0.42, off.height * 0.55
+      );
+      g.addColorStop(0, 'rgba(255,255,255,' + Math.min(0.75, softness * 0.8).toFixed(2) + ')');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      bctx.fillStyle = g;
+      bctx.fillRect(0, 0, blurLayer.width, blurLayer.height);
+
+      octx.drawImage(blurLayer, 0, 0);
+    }
+
+    var img = new Image();
+    img.src = off.toDataURL('image/jpeg', 0.92);
+    return img;
+  }
+
+  function setShot(index, img){
+    state.shots[index] = { img: img };
+    var thumb = frameList.children[index];
+    thumb.style.backgroundImage = 'url(' + img.src + ')';
+    img.onload = drawStrip;
+    if (img.complete) drawStrip();
+    updateReviewJump();
+  }
+
+  function shotCount(){
+    return state.shots.filter(function(s){ return s !== null; }).length;
+  }
+
+  function updateReviewJump(){
+    var n = shotCount();
+    reviewJumpCount.textContent = n + '/4';
+    reviewJumpBtn.style.visibility = n > 0 ? 'visible' : 'hidden';
+    if (state.shots[0]) reviewJumpBtn.style.backgroundImage = 'url(' + state.shots[0].img.src + ')';
+  }
+
+  function updateDots(activeIndex){
+    Array.prototype.forEach.call(shotDots.children, function(dot, i){
+      dot.classList.toggle('filled', i <= activeIndex);
+    });
+  }
+
+  function runSession(){
+    if (state.sessionRunning || !state.stream) return;
+    state.sessionRunning = true;
+    shutterBtn.disabled = true;
+    shotDots.style.display = 'flex';
+    poseMsg.style.display = 'block';
+    updateDots(-1);
+
+    var sequence = Promise.resolve();
+    for (var i = 0; i < 4; i++){
+      (function(i){
+        sequence = sequence.then(function(){
+          poseMsg.textContent = 'Shot ' + (i + 1) + ' of 4 — strike a pose';
+          return runCountdown(3);
+        }).then(function(){
+          flash();
+          setShot(i, captureFrame());
+          updateDots(i);
+          return wait(900);
+        });
+      })(i);
+    }
+    sequence.then(function(){
+      state.sessionRunning = false;
+      shutterBtn.disabled = false;
+      shotDots.style.display = 'none';
+      poseMsg.style.display = 'none';
+      goToReview();
+    });
+  }
+
+  shutterBtn.addEventListener('click', function(){
+    if (state.retakeIndex !== null){
+      var idx = state.retakeIndex;
+      poseMsg.style.display = 'block';
+      poseMsg.textContent = 'Retaking shot ' + (idx + 1) + '…';
+      shutterBtn.disabled = true;
+      runCountdown(3).then(function(){
+        flash();
+        setShot(idx, captureFrame());
+        poseMsg.style.display = 'none';
+        shutterBtn.disabled = false;
+        state.retakeIndex = null;
+        shutterLabel.textContent = 'tap to start';
+        goToReview();
+      });
+    } else {
+      runSession();
+    }
+  });
+
+  reviewJumpBtn.addEventListener('click', goToReview);
+  backToCamBtn.addEventListener('click', goToCamera);
+  newSessionBtn.addEventListener('click', function(){
+    state.shots = [null, null, null, null];
+    state.stickers = [];
+    state.selectedSticker = null;
+    updateStickerHint();
+    Array.prototype.forEach.call(frameList.children, function(t){ t.style.backgroundImage = ''; });
+    updateReviewJump();
+    drawStrip();
+    goToCamera();
+  });
+
+  /* retake a single frame from the review screen */
+  Array.prototype.forEach.call(frameList.children, function(thumb, i){
+    thumb.addEventListener('click', function(){
+      state.retakeIndex = i;
+      shutterLabel.textContent = 'retake shot ' + (i + 1);
+      goToCamera();
+    });
+  });
+
+  function goToReview(){
+    document.body.classList.add('mode-review');
+    drawStrip();
+  }
+  function goToCamera(){
+    document.body.classList.remove('mode-review');
+  }
+
+  /* ================= edit sheet ================= */
+  function syncWordmarkPreview(){
+    wordmarkPreview.textContent = brandInput.value || 'chani._.uwu';
+  }
+  function openSheet(){ document.body.classList.add('sheet-open'); }
+  brandChipBtn.addEventListener('click', openSheet);
+  customizeBtn.addEventListener('click', openSheet);
+  sheetDoneBtn.addEventListener('click', function(){ document.body.classList.remove('sheet-open'); });
+  sheetBackdrop.addEventListener('click', function(e){
+    if (e.target === sheetBackdrop) document.body.classList.remove('sheet-open');
+  });
+  brandInput.addEventListener('input', function(){ syncWordmarkPreview(); drawStrip(); });
+  captionInput.addEventListener('input', drawStrip);
+
+  function wireSegmented(container, onChange){
+    Array.prototype.forEach.call(container.children, function(btn){
+      btn.addEventListener('click', function(){
+        Array.prototype.forEach.call(container.children, function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        onChange(btn.getAttribute('data-val'));
+      });
+    });
+  }
+  wireSegmented(layoutSeg, function(val){ state.layout = val; drawStrip(); });
+  wireSegmented(borderSeg, function(val){
+    state.border = (val === 'on');
+    updateBorderColorVisibility();
+    drawStrip();
+  });
+
+  function normalizeHex(v){
+    v = (v || '').trim();
+    if (!v) return null;
+    if (v[0] !== '#') v = '#' + v;
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)){
+      if (v.length === 4) v = '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+      return v.toLowerCase();
+    }
+    return null;
+  }
+  function setBorderColor(hex){
+    var n = normalizeHex(hex);
+    if (!n) return;
+    state.borderColor = n;
+    borderColorPicker.value = n;
+    borderColorHex.value = n.toUpperCase();
+    drawStrip();
+  }
+  function updateBorderColorVisibility(){
+    borderColorField.style.display = state.border ? '' : 'none';
+  }
+  updateBorderColorVisibility();
+  borderColorPicker.addEventListener('input', function(){ setBorderColor(borderColorPicker.value); });
+  borderColorHex.addEventListener('change', function(){
+    var n = normalizeHex(borderColorHex.value);
+    if (n) setBorderColor(n); else borderColorHex.value = state.borderColor.toUpperCase();
+  });
+
+  function refreshOrientation(){
+    var o = detectOrientation();
+    if (o !== state.orientation){
+      state.orientation = o;
+      syncCameraAspect();
+      drawStrip();
+    }
+  }
+  window.addEventListener('resize', refreshOrientation);
+  window.addEventListener('orientationchange', function(){ setTimeout(refreshOrientation, 200); });
+
+  /* ================= strip rendering ================= */
+  function drawWordmark(ctx, text, cx, cy, size){
+    ctx.save();
+    ctx.font = '800 ' + size + 'px "Baloo 2", sans-serif';
+    ctx.textBaseline = 'middle';
+    var widths = text.split('').map(function(ch){ return ctx.measureText(ch).width; });
+    var total = widths.reduce(function(a,b){ return a + b; }, 0);
+    var x = cx - total / 2;
+    text.split('').forEach(function(ch, i){
+      ctx.fillStyle = LETTER_COLORS[i % LETTER_COLORS.length];
+      ctx.fillText(ch, x, cy);
+      x += widths[i];
+    });
+    ctx.restore();
+  }
+
+  function wrapCenteredText(ctx, text, cx, cy, maxWidth, lineHeight){
+    var words = text.split(' ');
+    var lines = [];
+    var line = '';
+    words.forEach(function(w){
+      var test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxWidth && line){
+        lines.push(line);
+        line = w;
+      } else {
+        line = test;
+      }
+    });
+    if (line) lines.push(line);
+    var startY = cy - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach(function(l, i){ ctx.fillText(l, cx, startY + i * lineHeight); });
+  }
+
+  /* draws img into the destination box, center-cropping it (like CSS
+     object-fit:cover) so any stored shot can be re-framed into whatever
+     cell shape the current orientation/layout needs. */
+  function drawImageCover(ctx, img, dx, dy, dw, dh){
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    var iw = img.naturalWidth, ih = img.naturalHeight;
+    var srcRatio = iw / ih, dstRatio = dw / dh;
+    var sx, sy, sw, sh;
+    if (srcRatio > dstRatio){
+      sh = ih; sw = ih * dstRatio; sx = (iw - sw) / 2; sy = 0;
+    } else {
+      sw = iw; sh = iw / dstRatio; sx = 0; sy = (ih - sh) / 2;
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    return true;
+  }
+
+  /* ================= color helpers ================= */
+  function hexToRgb(hex){
+    var h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(function(c){ return c + c; }).join('');
+    var num = parseInt(h, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+  function relLuminance(hex){
+    var c = hexToRgb(hex);
+    return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255;
+  }
+  function mixHex(hex, towardBlack, amt){
+    var c = hexToRgb(hex);
+    var t = towardBlack ? 0 : 255;
+    var r = Math.round(c.r + (t - c.r) * amt);
+    var g = Math.round(c.g + (t - c.g) * amt);
+    var b = Math.round(c.b + (t - c.b) * amt);
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  function computeGeometry(){
+    var aspect = getFrameAspect();
+    var showChrome = state.border; // border/wordmark/caption band only exist when bordered
+
+    /* thin uniform border on top/left/right, a tall band at the bottom
+       for the wordmark + caption — matches a classic die-cut photo-strip */
+    var side = showChrome ? 26 : 0;
+    var headerH = side;
+    var footerH = showChrome ? 190 : 0;
+
+    if (state.layout === 'grid'){
+      var gGutter = showChrome ? 16 : 6;
+      var cellW = 460;
+      var cellH = Math.round(cellW / aspect);
+      return {
+        mode: 'grid', margin: side, gutter: gGutter, cellW: cellW, cellH: cellH,
+        headerH: headerH, footerH: footerH, showChrome: showChrome,
+        w: side * 2 + cellW * 2 + gGutter,
+        h: headerH + cellH * 2 + gGutter + footerH
+      };
+    }
+    var gutter = showChrome ? 16 : 6;
+    var frameW = 460;
+    var frameH = Math.round(frameW / aspect);
+    return {
+      mode: 'strip', margin: side, gutter: gutter, frameW: frameW, frameH: frameH,
+      headerH: headerH, footerH: footerH, showChrome: showChrome,
+      w: side * 2 + frameW,
+      h: headerH + frameH * 4 + gutter * 3 + footerH
+    };
+  }
+
+  function drawStrip(){
+    var geo = computeGeometry();
+    stripCanvas.width = geo.w;
+    stripCanvas.height = geo.h;
+
+    var bg = state.border ? state.borderColor : '#0a0908';
+    var lum = relLuminance(bg);
+    var isLight = lum > 0.5;
+    /* readable ink & placeholder tones derived from the chosen border color */
+    var inkStrong = state.border ? (isLight ? '#201c18' : '#f5f1e8') : 'rgba(237,230,220,.92)';
+    var placeholderBg = state.border ? mixHex(bg, isLight, 0.1) : '#100d0c';
+    var strokeColor = state.border ? mixHex(bg, isLight, 0.18) : 'rgba(237,230,220,.14)';
+    var placeholderInk = state.border ? mixHex(bg, isLight, 0.32) : 'rgba(237,230,220,.18)';
+
+    stripCtx.fillStyle = bg;
+    stripCtx.fillRect(0, 0, geo.w, geo.h);
+
+    function drawPlaceholder(x, y, w, h, index){
+      stripCtx.fillStyle = placeholderInk;
+      stripCtx.font = '500 14px "Space Grotesk", sans-serif';
+      stripCtx.textAlign = 'center';
+      stripCtx.fillText('frame ' + (index + 1), x + w / 2, y + h / 2);
+      stripCtx.textAlign = 'left';
+    }
+
+    if (geo.mode === 'grid'){
+      for (var r = 0; r < 2; r++){
+        for (var c = 0; c < 2; c++){
+          var i = r * 2 + c;
+          var x = geo.margin + c * (geo.cellW + geo.gutter);
+          var y = geo.headerH + r * (geo.cellH + geo.gutter);
+
+          stripCtx.fillStyle = placeholderBg;
+          stripCtx.fillRect(x, y, geo.cellW, geo.cellH);
+
+          var shot = state.shots[i];
+          var drawn = shot && drawImageCover(stripCtx, shot.img, x, y, geo.cellW, geo.cellH);
+          if (!drawn) drawPlaceholder(x, y, geo.cellW, geo.cellH, i);
+
+          if (!state.border){
+            stripCtx.strokeStyle = strokeColor;
+            stripCtx.lineWidth = 1;
+            stripCtx.strokeRect(x + .5, y + .5, geo.cellW - 1, geo.cellH - 1);
+          }
+        }
+      }
+    } else {
+      /* symmetric column: equal margin left and right, no side numbering */
+      var x2 = geo.margin;
+      for (var i2 = 0; i2 < 4; i2++){
+        var y2 = geo.headerH + i2 * (geo.frameH + geo.gutter);
+
+        stripCtx.fillStyle = placeholderBg;
+        stripCtx.fillRect(x2, y2, geo.frameW, geo.frameH);
+
+        var shot2 = state.shots[i2];
+        var drawn2 = shot2 && drawImageCover(stripCtx, shot2.img, x2, y2, geo.frameW, geo.frameH);
+        if (!drawn2) drawPlaceholder(x2, y2, geo.frameW, geo.frameH, i2);
+
+        if (!state.border){
+          stripCtx.strokeStyle = strokeColor;
+          stripCtx.lineWidth = 1;
+          stripCtx.strokeRect(x2 + .5, y2 + .5, geo.frameW - 1, geo.frameH - 1);
+        }
+      }
+    }
+
+    if (geo.showChrome){
+      var footerTop = geo.h - geo.footerH;
+      var brand = (brandInput.value || 'chani._.uwu').trim() || 'chani._.uwu';
+      drawWordmark(stripCtx, brand, geo.w / 2, footerTop + 56, 40);
+
+      var caption = (captionInput.value || '').trim();
+      if (caption){
+        stripCtx.save();
+        stripCtx.font = '600 20px "Space Grotesk", sans-serif';
+        stripCtx.fillStyle = inkStrong;
+        stripCtx.textAlign = 'center';
+        wrapCenteredText(stripCtx, caption, geo.w / 2, footerTop + 118, geo.w - geo.margin * 2 - 16, 26);
+        stripCtx.restore();
+      }
+    }
+
+    drawStickers(stripCtx, geo);
+  }
+
+  /* ================= stickers ================= */
+  var HANDLE_R = 15; // canvas px, radius of each corner handle badge
+
+  /* every sticker is a center point (xFrac/yFrac, fractions of the canvas)
+     plus a scale (fraction of canvas width) and a rotation in radians —
+     storing it this way means it stays put proportionally even if the
+     layout/orientation/border settings change the canvas size later. */
+  function stickerGeometry(s, geo){
+    var w = s.scale * geo.w;
+    var h = w * (s.img.naturalHeight / s.img.naturalWidth);
+    return { w: w, h: h, cx: s.xFrac * geo.w, cy: s.yFrac * geo.h, rot: s.rotation || 0 };
+  }
+  function localToCanvas(g, lx, ly){
+    var cos = Math.cos(g.rot), sin = Math.sin(g.rot);
+    return { x: g.cx + lx * cos - ly * sin, y: g.cy + lx * sin + ly * cos };
+  }
+  function canvasToLocal(g, px, py){
+    var dx = px - g.cx, dy = py - g.cy;
+    var cos = Math.cos(-g.rot), sin = Math.sin(-g.rot);
+    return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
+  }
+  function stickerCorners(g){
+    var hw = g.w / 2, hh = g.h / 2;
+    return {
+      topLeft: localToCanvas(g, -hw, -hh),
+      topRight: localToCanvas(g, hw, -hh),
+      bottomRight: localToCanvas(g, hw, hh),
+      bottomLeft: localToCanvas(g, -hw, hh)
+    };
+  }
+  function ptDist(a, b){ return Math.hypot(a.x - b.x, a.y - b.y); }
+  function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+
+  function drawHandleBadge(ctx, pt, color, glyph){
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, HANDLE_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 15px "Space Grotesk", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(glyph, pt.x, pt.y + 1);
+    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
+  }
+
+  function drawStickers(ctx, geo){
+    state.stickers.forEach(function(s, idx){
+      if (!s.img || !s.img.complete || !s.img.naturalWidth) return;
+      var g = stickerGeometry(s, geo);
+
+      ctx.save();
+      ctx.translate(g.cx, g.cy);
+      ctx.rotate(g.rot);
+      ctx.drawImage(s.img, -g.w / 2, -g.h / 2, g.w, g.h);
+      ctx.restore();
+
+      if (idx === state.selectedSticker){
+        var c = stickerCorners(g);
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(242,183,5,.95)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.moveTo(c.topLeft.x, c.topLeft.y);
+        ctx.lineTo(c.topRight.x, c.topRight.y);
+        ctx.lineTo(c.bottomRight.x, c.bottomRight.y);
+        ctx.lineTo(c.bottomLeft.x, c.bottomLeft.y);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+
+        drawHandleBadge(ctx, c.topRight, '#e85d3d', '\u00D7');       // delete
+        drawHandleBadge(ctx, c.bottomRight, '#f2b705', '\u21F2');    // resize
+        drawHandleBadge(ctx, c.bottomLeft, '#f2b705', '\u27F3');     // rotate
+      }
+    });
+  }
+
+  function canvasPointFromClientXY(clientX, clientY){
+    var rect = stripCanvas.getBoundingClientRect();
+    var scaleX = stripCanvas.width / rect.width;
+    var scaleY = stripCanvas.height / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }
+
+  function hitTestSticker(px, py){
+    var geo = computeGeometry();
+    for (var i = state.stickers.length - 1; i >= 0; i--){
+      var g = stickerGeometry(state.stickers[i], geo);
+      var lp = canvasToLocal(g, px, py);
+      if (Math.abs(lp.x) <= g.w / 2 && Math.abs(lp.y) <= g.h / 2) return i;
+    }
+    return -1;
+  }
+
+  function updateStickerHint(){
+    stickerHint.style.display = state.stickers.length ? '' : 'none';
+  }
+
+  function removeSticker(idx){
+    state.stickers.splice(idx, 1);
+    state.selectedSticker = null;
+    updateStickerHint();
+    drawStrip();
+  }
+
+  addStickerBtn.addEventListener('click', function(){ stickerFileInput.click(); });
+  stickerFileInput.addEventListener('change', function(){
+    var files = Array.prototype.slice.call(stickerFileInput.files || []);
+    files.forEach(function(file){
+      if (!/^image\//.test(file.type)) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        var img = new Image();
+        img.onload = function(){
+          var offset = (state.stickers.length % 5) * 0.06;
+          state.stickers.push({
+            img: img,
+            xFrac: Math.min(0.8, 0.5 + offset),
+            yFrac: Math.min(0.8, 0.42 + offset),
+            scale: 0.28,
+            rotation: 0
+          });
+          state.selectedSticker = state.stickers.length - 1;
+          updateStickerHint();
+          drawStrip();
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    stickerFileInput.value = '';
+  });
+
+  /* pointer events unify mouse + touch so this works the same on phone
+     and desktop. Dragging the sticker body moves it; the three corner
+     handles (only shown on the selected sticker) delete, resize, or
+     rotate it. */
+  var stickerDrag = {
+    active: false, mode: null, index: -1,
+    offsetX: 0, offsetY: 0,
+    startAngle: 0, startRotation: 0
+  };
+
+  stripCanvas.addEventListener('pointerdown', function(e){
+    var pt = canvasPointFromClientXY(e.clientX, e.clientY);
+    var geo = computeGeometry();
+
+    if (state.selectedSticker != null && state.stickers[state.selectedSticker]){
+      var s = state.stickers[state.selectedSticker];
+      var g = stickerGeometry(s, geo);
+      var c = stickerCorners(g);
+
+      /* only treat a tap near a handle as hitting that handle if nothing
+         else is drawn on top of it there — otherwise selecting/dragging a
+         different overlapping sticker could wrongly trigger the old
+         selection's handle instead */
+      var topmostHere = hitTestSticker(pt.x, pt.y);
+      var otherOnTop = (topmostHere !== -1 && topmostHere !== state.selectedSticker);
+
+      if (!otherOnTop){
+        if (ptDist(pt, c.topRight) <= HANDLE_R + 6){
+          removeSticker(state.selectedSticker);
+          return;
+        }
+        if (ptDist(pt, c.bottomRight) <= HANDLE_R + 6){
+          stickerDrag.active = true;
+          stickerDrag.mode = 'resize';
+          stickerDrag.index = state.selectedSticker;
+          try { stripCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+          return;
+        }
+        if (ptDist(pt, c.bottomLeft) <= HANDLE_R + 6){
+          stickerDrag.active = true;
+          stickerDrag.mode = 'rotate';
+          stickerDrag.index = state.selectedSticker;
+          stickerDrag.startAngle = Math.atan2(pt.y - g.cy, pt.x - g.cx);
+          stickerDrag.startRotation = g.rot;
+          try { stripCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+          return;
+        }
+      }
+    }
+
+    var idx = hitTestSticker(pt.x, pt.y);
+    if (idx >= 0){
+      state.selectedSticker = idx;
+      var gg = stickerGeometry(state.stickers[idx], geo);
+      stickerDrag.active = true;
+      stickerDrag.mode = 'move';
+      stickerDrag.index = idx;
+      stickerDrag.offsetX = pt.x - gg.cx;
+      stickerDrag.offsetY = pt.y - gg.cy;
+      try { stripCanvas.setPointerCapture(e.pointerId); } catch (err) {}
+    } else {
+      state.selectedSticker = null;
+    }
+    drawStrip();
+  });
+
+  stripCanvas.addEventListener('pointermove', function(e){
+    if (!stickerDrag.active) return;
+    var pt = canvasPointFromClientXY(e.clientX, e.clientY);
+    var geo = computeGeometry();
+    var s = state.stickers[stickerDrag.index];
+    if (!s) return;
+
+    if (stickerDrag.mode === 'move'){
+      s.xFrac = clamp01((pt.x - stickerDrag.offsetX) / geo.w);
+      s.yFrac = clamp01((pt.y - stickerDrag.offsetY) / geo.h);
+    } else if (stickerDrag.mode === 'resize'){
+      var g = stickerGeometry(s, geo);
+      var ratio = s.img.naturalHeight / s.img.naturalWidth;
+      var diagFactor = Math.sqrt(1 + ratio * ratio);
+      var d = Math.hypot(pt.x - g.cx, pt.y - g.cy);
+      var newScale = (d * 2 / diagFactor) / geo.w;
+      s.scale = Math.max(0.04, Math.min(0.95, newScale));
+    } else if (stickerDrag.mode === 'rotate'){
+      var g2 = stickerGeometry(s, geo);
+      var angleNow = Math.atan2(pt.y - g2.cy, pt.x - g2.cx);
+      s.rotation = stickerDrag.startRotation + (angleNow - stickerDrag.startAngle);
+    }
+    drawStrip();
+  });
+
+  function endStickerDrag(){ stickerDrag.active = false; stickerDrag.mode = null; stickerDrag.index = -1; }
+  stripCanvas.addEventListener('pointerup', endStickerDrag);
+  stripCanvas.addEventListener('pointercancel', endStickerDrag);
+
+  /* ================= share / print ================= */
+  /* renders without the sticker selection outline/handles so exported
+     images never include editing chrome, then restores the on-screen view */
+  function renderForExport(){
+    var prevSelected = state.selectedSticker;
+    state.selectedSticker = null;
+    drawStrip();
+    return function restore(){
+      state.selectedSticker = prevSelected;
+      drawStrip();
+    };
+  }
+
+
+  function shareStrip(){
+    var restore = renderForExport();
+    stripCanvas.toBlob(function(blob){
+      restore();
+      if (!blob) return;
+      var brand = (brandInput.value || 'booth').trim() || 'booth';
+      var file = new File([blob], brand + '-strip.png', { type:'image/png' });
+      if (navigator.canShare && navigator.canShare({ files:[file] })){
+        navigator.share({ files:[file], title: brand + ' photo strip' }).catch(function(){ /* cancelled */ });
+      } else {
+        // fallback for browsers without file-sharing: open the image so it
+        // can be long-pressed and saved manually
+        var url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      }
+    }, 'image/png');
+  }
+
+  /* like drawImageCover but "contain" instead of "cover", for a <canvas>
+     source — fits the WHOLE strip into each cell without cropping
+     anything off, so the top border and bottom footer are never cut.
+     Any leftover space is left as the sheet's white background. */
+  function drawCanvasContain(ctx, srcCanvas, dx, dy, dw, dh){
+    var iw = srcCanvas.width, ih = srcCanvas.height;
+    if (!iw || !ih) return;
+    var srcRatio = iw / ih, dstRatio = dw / dh;
+    var w, h, x, y;
+    if (srcRatio > dstRatio){
+      w = dw; h = dw / srcRatio; x = dx; y = dy + (dh - h) / 2;
+    } else {
+      h = dh; w = dh * srcRatio; y = dy; x = dx + (dw - w) / 2;
+    }
+    ctx.drawImage(srcCanvas, 0, 0, iw, ih, x, y, w, h);
+  }
+
+  /* the print sheet is a real 4R (10.2 x 15.2cm) portrait sheet with the
+     strip placed twice, side by side — each copy fits within a 5.1cm wide
+     (half the sheet) x 15.2cm tall cell, the classic photo-booth layout. */
+  function buildPrintSheet(){
+    var paperW = cmToPx(PAPER_W_CM);
+    var paperH = cmToPx(PAPER_H_CM);
+    var halfW = Math.round(paperW / 2);
+
+    var sheet = document.createElement('canvas');
+    sheet.width = paperW;
+    sheet.height = paperH;
+    var sctx = sheet.getContext('2d');
+    sctx.fillStyle = '#ffffff';
+    sctx.fillRect(0, 0, paperW, paperH);
+    drawCanvasContain(sctx, stripCanvas, 0, 0, halfW, paperH);
+    drawCanvasContain(sctx, stripCanvas, halfW, 0, paperW - halfW, paperH);
+    return sheet;
+  }
+
+  function printStrip(){
+    var restore = renderForExport();
+    var sheet = buildPrintSheet();
+    restore();
+    /* window.print() must wait until the new bitmap has actually loaded
+       into the <img> — calling it immediately after setting .src can grab
+       the page before the image paints, producing a blank print. */
+    printImg.onload = function(){
+      printImg.onload = null;
+      window.print();
+    };
+    printImg.src = sheet.toDataURL('image/png');
+  }
+
+  function saveStrip(){
+    var restore = renderForExport();
+    stripCanvas.toBlob(function(blob){
+      restore();
+      if (!blob) return;
+      var brand = (brandInput.value || 'booth').trim() || 'booth';
+      var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = brand + '-strip-' + stamp + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // give the browser a moment to start the download before revoking
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    }, 'image/png');
+  }
+
+  shareBtn.addEventListener('click', shareStrip);
+  saveBtn.addEventListener('click', saveStrip);
+  printBtn.addEventListener('click', printStrip);
+
+  /* the Web Share API (with file support) is common on iOS/Android but
+     usually absent on desktop browsers, so tell people what will actually
+     happen when they tap Share */
+  (function setShareNote(){
+    var canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [new File([], 'test.png', { type: 'image/png' })] }));
+    shareNote.textContent = canShareFiles
+      ? 'Share opens your device\'s share sheet.'
+      : 'Share opens the strip in a new tab — long-press or right-click to save it.';
+  })();
+
+  /* ================= home-screen icon ================= */
+  (function makeIcon(){
+    var c = document.createElement('canvas');
+    c.width = 180; c.height = 180;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#171412';
+    ctx.fillRect(0, 0, 180, 180);
+    ctx.fillStyle = '#d9a441';
+    ctx.beginPath();
+    ctx.arc(90, 90, 46, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#171412';
+    ctx.beginPath();
+    ctx.arc(90, 90, 30, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#b23a2e';
+    ctx.fillRect(58, 46, 64, 14);
+    var dataUrl = c.toDataURL('image/png');
+
+    var appleLink = document.createElement('link');
+    appleLink.rel = 'apple-touch-icon';
+    appleLink.href = dataUrl;
+    document.head.appendChild(appleLink);
+
+    var iconLink = document.createElement('link');
+    iconLink.rel = 'icon';
+    iconLink.href = dataUrl;
+    document.head.appendChild(iconLink);
+  })();
+
+  /* ================= init ================= */
+  syncWordmarkPreview();
+  drawStrip();
+
+})();
+</script>
+</body>
+</html>

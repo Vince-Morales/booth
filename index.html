@@ -1560,32 +1560,7 @@
   stripCanvas.addEventListener('pointercancel', endStickerDrag);
 
 /* ================= share / print ================= */
-  function shareStrip(){
-    var restore = renderForExport();
-    stripCanvas.toBlob(function(blob){
-      restore();
-      if (!blob) return;
-      
-      var brand = (brandInput.value || 'booth').trim() || 'booth';
-      var filename = brand + '-strip.png';
-      
-      // Try native share API first (mobile)
-      var file = new File([blob], filename, { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        navigator.share({
-          files: [file],
-          title: brand + ' photo strip'
-        }).catch(function(err) { console.log('Share canceled', err); });
-      } else {
-        // Fallback for desktop: open image in a new tab
-        var url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-      }
-    }, 'image/png');
-  }
-
-  function endStickerDrag(){ stickerDrag.active = false; stickerDrag.mode = null; stickerDrag.index = -1; }
+function endStickerDrag(){ stickerDrag.active = false; stickerDrag.mode = null; stickerDrag.index = -1; }
   stripCanvas.addEventListener('pointerup', endStickerDrag);
   stripCanvas.addEventListener('pointercancel', endStickerDrag);
   stripCanvas.addEventListener('touchstart', function(e){
@@ -1596,6 +1571,7 @@
       e.preventDefault();
     }
   }, { passive: false });
+
   /* ================= share / print ================= */
   function renderForExport(){
     var prevSelected = state.selectedSticker;
@@ -1606,6 +1582,7 @@
       drawStrip();
     };
   }
+  
   function drawCanvasContain(ctx, srcCanvas, dx, dy, dw, dh){
     var iw = srcCanvas.width, ih = srcCanvas.height;
     if (!iw || !ih) return;
@@ -1636,21 +1613,6 @@
     return sheet;
   }
 
- // --- SYNC PRINT ---
-  function printStrip(){
-    var restore = renderForExport();
-    var sheet = buildPrintSheet();
-    var dataUrl = sheet.toDataURL('image/jpeg', 1.0);
-    restore();
-
-    var printImg = document.getElementById('printImg');
-    printImg.src = dataUrl;
-    
-    // iPadOS/iOS blocks window.print() inside an onload callback.
-    // Because a dataURL is instantly available, we can trigger print immediately.
-    window.print();
-  }
-
   // Helper to convert dataURL to Blob synchronously for Apple devices
   function dataUrlToBlobSync(dataUrl) {
     var arr = dataUrl.split(',');
@@ -1662,12 +1624,29 @@
     return new Blob([u8arr], { type: mime });
   }
 
+  // --- SYNC PRINT ---
+  function printStrip(){
+    var restore = renderForExport();
+    var sheet = buildPrintSheet();
+    
+    // Inject canvas directly to skip slow image encoding on iPad
+    var printArea = document.getElementById('printArea');
+    printArea.innerHTML = '';
+    sheet.style.display = 'block';
+    sheet.style.width = '100%';
+    sheet.style.height = 'auto';
+    printArea.appendChild(sheet);
+
+    window.print();
+    
+    // Restore UI *after* print dialog opens to not steal time from Safari
+    setTimeout(restore, 0); 
+  }
+
   // --- SYNC SAVE ---
   function saveStrip(){
     var restore = renderForExport();
     var dataUrl = stripCanvas.toDataURL('image/png');
-    restore();
-    
     var blob = dataUrlToBlobSync(dataUrl);
     
     var brand = (brandInput.value || 'booth').trim() || 'booth';
@@ -1681,15 +1660,15 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    setTimeout(restore, 0);
   }
 
   // --- SYNC SHARE ---
   function shareStrip(){
     var restore = renderForExport();
     var dataUrl = stripCanvas.toDataURL('image/png');
-    restore();
-
     var blob = dataUrlToBlobSync(dataUrl);
+    
     var brand = (brandInput.value || 'booth').trim() || 'booth';
     var filename = brand + '-strip.png';
     var file = new File([blob], filename, { type: 'image/png' });
@@ -1704,56 +1683,11 @@
       window.open(url, '_blank');
       setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
     }
+    
+    // Defer UI restore so Safari isn't blocked
+    setTimeout(restore, 0); 
   }
+
   shareBtn.addEventListener('click', shareStrip);
   saveBtn.addEventListener('click', saveStrip);
   printBtn.addEventListener('click', printStrip);
-  
-  /* the Web Share API (with file support) is common on iOS/Android but
-     usually absent on desktop browsers, so tell people what will actually
-     happen when they tap Share */
-  (function setShareNote(){
-    var canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [new File([], 'test.png', { type: 'image/png' })] }));
-    shareNote.textContent = canShareFiles
-      ? 'Share opens your device\'s share sheet.'
-      : 'Share opens the strip in a new tab — long-press or right-click to save it.';
-  })();
-
-  /* ================= home-screen icon ================= */
-  (function makeIcon(){
-    var c = document.createElement('canvas');
-    c.width = 180; c.height = 180;
-    var ctx = c.getContext('2d');
-    ctx.fillStyle = '#171412';
-    ctx.fillRect(0, 0, 180, 180);
-    ctx.fillStyle = '#d9a441';
-    ctx.beginPath();
-    ctx.arc(90, 90, 46, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#171412';
-    ctx.beginPath();
-    ctx.arc(90, 90, 30, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#b23a2e';
-    ctx.fillRect(58, 46, 64, 14);
-    var dataUrl = c.toDataURL('image/png');
-
-    var appleLink = document.createElement('link');
-    appleLink.rel = 'apple-touch-icon';
-    appleLink.href = dataUrl;
-    document.head.appendChild(appleLink);
-
-    var iconLink = document.createElement('link');
-    iconLink.rel = 'icon';
-    iconLink.href = dataUrl;
-    document.head.appendChild(iconLink);
-  })();
-
-  /* ================= init ================= */
-  syncWordmarkPreview();
-  drawStrip();
-
-})();
-</script>
-</body>
-</html>

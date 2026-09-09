@@ -1560,8 +1560,6 @@
   stripCanvas.addEventListener('pointercancel', endStickerDrag);
 
   /* ================= share / print ================= */
-  /* renders without the sticker selection outline/handles so exported
-     images never include editing chrome, then restores the on-screen view */
   function renderForExport(){
     var prevSelected = state.selectedSticker;
     state.selectedSticker = null;
@@ -1571,7 +1569,6 @@
       drawStrip();
     };
   }
-
 
   function shareStrip(){
     var restore = renderForExport();
@@ -1583,18 +1580,12 @@
       if (navigator.canShare && navigator.canShare({ files:[file] })){
         navigator.share({ files:[file], title: brand + ' photo strip' }).catch(function(){ /* cancelled */ });
       } else {
-        // fallback for browsers without file-sharing: open the image so it
-        // can be long-pressed and saved manually
         var url = URL.createObjectURL(blob);
         window.open(url, '_blank');
       }
     }, 'image/png');
   }
 
-  /* like drawImageCover but "contain" instead of "cover", for a <canvas>
-     source — fits the WHOLE strip into each cell without cropping
-     anything off, so the top border and bottom footer are never cut.
-     Any leftover space is left as the sheet's white background. */
   function drawCanvasContain(ctx, srcCanvas, dx, dy, dw, dh){
     var iw = srcCanvas.width, ih = srcCanvas.height;
     if (!iw || !ih) return;
@@ -1608,9 +1599,6 @@
     ctx.drawImage(srcCanvas, 0, 0, iw, ih, x, y, w, h);
   }
 
-  /* the print sheet is a real 4R (10.2 x 15.2cm) portrait sheet with the
-     strip placed twice, side by side — each copy fits within a 5.1cm wide
-     (half the sheet) x 15.2cm tall cell, the classic photo-booth layout. */
   function buildPrintSheet(){
     var paperW = cmToPx(PAPER_W_CM);
     var paperH = cmToPx(PAPER_H_CM);
@@ -1620,11 +1608,7 @@
     sheet.width = paperW;
     sheet.height = paperH;
     var sctx = sheet.getContext('2d');
-    /* fill with the strip's own background (its border color, or its dark
-       background when borderless) rather than plain white — otherwise any
-       leftover letterboxing around each "contain"-fitted copy, and the
-       seam between the two copies, shows up as a stray white line/gap
-       once the strip itself is colored. */
+    
     sctx.fillStyle = lastStripBg;
     sctx.fillRect(0, 0, paperW, paperH);
     drawCanvasContain(sctx, stripCanvas, 0, 0, halfW, paperH);
@@ -1632,173 +1616,20 @@
     return sheet;
   }
 
-  /* iPadOS's (and most mobile OSes') Print sheet only lists its own fixed
-     paper-size catalog — "Paper Size" in that UI comes from the printer/
-     PDF driver, not from this page's @page CSS, so a webpage has no way
-     to add a "4R" or "Custom" entry there. The only way to guarantee the
-     exact 10.2 x 15.2cm sheet on every platform is to build a real PDF at
-     that exact size ourselves and hand it straight to the user (via the
-     share sheet, or a download) instead of going through window.print(). */
-  /* ---- minimal, dependency-free single-image PDF ----
-     No external library, no CDN, nothing that can fail to load or get
-     blocked — this just writes the handful of PDF objects a single
-     full-bleed image needs, at an exact physical size.
-
-     The earlier version read the image back out via canvas.toDataURL()
-     + atob(), which quietly breaks if a browser doesn't actually honor
-     the requested "image/jpeg" type — you still get a data: URL back,
-     it just silently contains a different format's bytes, which were
-     then mislabeled and stuffed into a /DCTDecode (JPEG) stream. Every
-     PDF reader then fails to decode that image and shows a blank/
-     "empty" page, which matches exactly what was being reported.
-
-     This version reads the actual encoded bytes via canvas.toBlob() and
-     checks blob.type before trusting it's really a JPEG. If the browser
-     won't give back a genuine JPEG, it falls back to embedding the raw,
-     losslessly-compressed pixels instead (via FlateDecode, the one
-     image encoding every PDF reader is required to support) rather than
-     silently shipping a broken file. */
-  function buildImagePdf(filterName, imgBytes, pxW, pxH, cmW, cmH){
-    var PT_PER_CM = 72 / 2.54;
-    var W = (cmW * PT_PER_CM).toFixed(2);
-    var H = (cmH * PT_PER_CM).toFixed(2);
-    var content = 'q\n' + W + ' 0 0 ' + H + ' 0 0 cm\n/Im0 Do\nQ';
-
-    var enc = new TextEncoder();
-    var parts = [];       // array of Uint8Array chunks, in final order
-    var offset = 0;
-    var objOffsets = [0]; // 1-indexed by PDF object number
-
-    function pushText(str){ var b = enc.encode(str); parts.push(b); offset += b.length; return b.length; }
-    function pushBytes(b){ parts.push(b); offset += b.length; }
-    function beginObj(n){ objOffsets[n] = offset; pushText(n + ' 0 obj\n'); }
-
-    pushText('%PDF-1.4\n');
-
-    beginObj(1);
-    pushText('<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
-
-    beginObj(2);
-    pushText('<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
-
-    beginObj(3);
-    pushText('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n');
-
-    beginObj(4);
-    pushText('<< /Type /XObject /Subtype /Image /Width ' + pxW + ' /Height ' + pxH + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /' + filterName + ' /Length ' + imgBytes.length + ' >>\nstream\n');
-    pushBytes(imgBytes);
-    pushText('\nendstream\nendobj\n');
-
-    beginObj(5);
-    pushText('<< /Length ' + content.length + ' >>\nstream\n' + content + '\nendstream\nendobj\n');
-
-    var xrefStart = offset;
-    pushText('xref\n0 6\n0000000000 65535 f \n');
-    for (var i = 1; i <= 5; i++){
-      var s = String(objOffsets[i]);
-      while (s.length < 10) s = '0' + s;
-      pushText(s + ' 00000 n \n');
-    }
-    pushText('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xrefStart + '\n%%EOF');
-
-    var total = new Uint8Array(offset);
-    var pos = 0;
-    parts.forEach(function(p){ total.set(p, pos); pos += p.length; });
-    return total;
-  }
-
-  function canvasToBlobAsync(canvas, type, quality){
-    return new Promise(function(resolve){
-      if (!canvas.toBlob){ resolve(null); return; }
-      canvas.toBlob(function(blob){ resolve(blob); }, type, quality);
-    });
-  }
-
-  /* raw RGB pixels, deflate-compressed via the browser's native
-     CompressionStream — PDF's /FlateDecode expects exactly the zlib
-     (RFC 1950) format that CompressionStream('deflate') produces. */
-  function canvasRgbBytes(canvas){
-    var ctx = canvas.getContext('2d');
-    var rgba = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    var rgb = new Uint8Array(canvas.width * canvas.height * 3);
-    for (var i = 0, j = 0; i < rgba.length; i += 4, j += 3){
-      rgb[j] = rgba[i]; rgb[j + 1] = rgba[i + 1]; rgb[j + 2] = rgba[i + 2];
-    }
-    return rgb;
-  }
-
-  async function deflateBytes(bytes){
-    var cs = new CompressionStream('deflate');
-    var writer = cs.writable.getWriter();
-    writer.write(bytes);
-    writer.close();
-    var chunks = [];
-    var total = 0;
-    var reader = cs.readable.getReader();
-    for (;;){
-      var r = await reader.read();
-      if (r.done) break;
-      chunks.push(r.value);
-      total += r.value.length;
-    }
-    var out = new Uint8Array(total);
-    var pos = 0;
-    chunks.forEach(function(c){ out.set(c, pos); pos += c.length; });
-    return out;
-  }
-
-  async function buildPdfBlob(sheet){
-    var pxW = sheet.width, pxH = sheet.height;
-    var pdfBytes = null;
-
-    var jpegBlob = await canvasToBlobAsync(sheet, 'image/jpeg', 0.92);
-    if (jpegBlob && jpegBlob.type === 'image/jpeg' && jpegBlob.size > 200){
-      var jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());
-      pdfBytes = buildImagePdf('DCTDecode', jpegBytes, pxW, pxH, PAPER_W_CM, PAPER_H_CM);
-    } else if (window.CompressionStream){
-      var flateBytes = await deflateBytes(canvasRgbBytes(sheet));
-      pdfBytes = buildImagePdf('FlateDecode', flateBytes, pxW, pxH, PAPER_W_CM, PAPER_H_CM);
-    } else {
-      throw new Error('this browser can\u2019t encode JPEG or compress pixel data');
-    }
-
-    // a real 4R sheet is always well past a few KB — anything tiny means
-    // something upstream (an untouched/blank canvas, a failed encode)
-    // went wrong, so fail loudly instead of handing over a broken file.
-    if (!pdfBytes || pdfBytes.length < 800){
-      throw new Error('the generated file looked empty');
-    }
-    return new Blob([pdfBytes], { type: 'application/pdf' });
-  }
-
-  async function printStrip(){
+  // --- NEW STREAMLINED PRINT FUNCTION ---
+  function printStrip(){
     var restore = renderForExport();
     var sheet = buildPrintSheet();
     restore();
 
-    var brand = (brandInput.value || 'booth').trim() || 'booth';
-    var blob;
-    try {
-      blob = await buildPdfBlob(sheet);
-    } catch (e){
-      alert('Could not build the PDF (' + (e && e.message ? e.message : 'unknown error') + '). Saving a PNG instead.');
-      saveStrip();
-      return;
-    }
-
-    var file;
-    try { file = new File([blob], brand + '-strip-4R.pdf', { type: 'application/pdf' }); }
-    catch (e){ file = null; } // very old browsers lack File(); download fallback below still works
-
-    if (file && navigator.canShare && navigator.canShare({ files: [file] })){
-      navigator.share({ files: [file], title: brand + ' photo strip (4R)' }).catch(function(err){
-        // "cancelled" (AbortError) is normal; anything else, fall back to a direct download
-        if (err && err.name === 'AbortError') return;
-        downloadBlob(blob, brand + '-strip-4R.pdf');
-      });
-      return;
-    }
-    downloadBlob(blob, brand + '-strip-4R.pdf');
+    // Bake the canvas directly into the hidden image tag as a JPEG
+    var printImg = document.getElementById('printImg');
+    printImg.src = sheet.toDataURL('image/jpeg', 1.0);
+    
+    // Trigger the native print dialog once the image is ready
+    printImg.onload = function() {
+      window.print();
+    };
   }
 
   function downloadBlob(blob, filename){
@@ -1826,7 +1657,6 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      // give the browser a moment to start the download before revoking
       setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
     }, 'image/png');
   }
@@ -1834,7 +1664,7 @@
   shareBtn.addEventListener('click', shareStrip);
   saveBtn.addEventListener('click', saveStrip);
   printBtn.addEventListener('click', printStrip);
-
+  
   /* the Web Share API (with file support) is common on iOS/Android but
      usually absent on desktop browsers, so tell people what will actually
      happen when they tap Share */

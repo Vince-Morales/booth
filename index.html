@@ -633,7 +633,12 @@
   }
 
   function syncCameraAspect(){
-    camAspect = state.orientation === 'portrait' ? ASPECT_PORTRAIT : ASPECT_LANDSCAPE;
+    // If it's a portrait phone, make the live viewfinder tall (3:4)
+    if (state.orientation === 'portrait') {
+      camAspect = 3 / 4;
+    } else {
+      camAspect = ASPECT_LANDSCAPE;
+    }
     cameraWrap.style.aspectRatio = camAspect.toFixed(4) + ' / 1';
   }
 
@@ -888,10 +893,11 @@ function detectOrientation(){
 function captureFrame(){
     var off = document.createElement('canvas');
     var isPortraitPhone = (state.orientation === 'portrait');
-    var frameAspect = isPortraitPhone ? (4 / 3) : getFrameAspect(); 
-    
+
+    // For portrait phones, the final cell in the strip is landscape (4:3)
     off.width = 920;
-    off.height = Math.round(off.width / frameAspect);
+    off.height = Math.round(off.width / (4 / 3)); // 690px
+    
     var octx = off.getContext('2d');
     var f = FILTERS.filter(function(x){ return x.id === state.activeFilter; })[0];
     var colorCss = (f && f.css && f.css !== 'none') ? f.css : '';
@@ -901,6 +907,7 @@ function captureFrame(){
     var sx, sy, sw, sh;
 
     if (isPortraitPhone) {
+        // Grab a 3:4 portrait slice from the live stream
         var srcTargetRatio = 3 / 4;
         var srcRatio = vw / vh;
         if (srcRatio > srcTargetRatio){
@@ -909,6 +916,7 @@ function captureFrame(){
             sw = vw; sh = vw / srcTargetRatio; sx = 0; sy = (vh - sh) / 2;
         }
 
+        // Rotate the 3:4 photo 90 degrees so it becomes a 4:3 landscape image in the strip
         octx.save();
         octx.translate(off.width / 2, off.height / 2);
         if (state.facingMode === 'user'){

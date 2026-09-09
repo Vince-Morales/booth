@@ -332,15 +332,16 @@
      gets a natural width instead of being squashed to fit the visible
      area — anything that doesn't fit vertically just scrolls, which reads
      far better than a tiny, over-compressed thumbnail. */
-  #stripCanvas{
-    width:min(420px, 100%);
-    max-width:100%;
-    height:auto;
-    border-radius:10px;
-    display:block;
-    flex:0 0 auto;
-    margin:0 auto;
-  }
+#stripCanvas {
+  width: min(420px, 100%);
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+  touch-action: pan-y; /* <-- ADD THIS EXACT LINE */
+  flex: 0 0 auto;
+  margin: 0 auto;
+}
 
   .sticker-bar{
     display:flex; justify-content:center;

@@ -664,14 +664,13 @@
   };
 
   /* orientation now follows the device instead of a manual toggle */
- function detectOrientation(){
-    // Desktops and laptops using a mouse/trackpad are always landscape
-    if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) {
-      return 'landscape';
+function detectOrientation(){
+    // Check if the screen height is greater than width — that is strictly portrait
+    if (window.innerHeight > window.innerWidth) {
+      return 'portrait';
     }
-    if (window.matchMedia && window.matchMedia('(orientation: landscape)').matches) return 'landscape';
-    if (window.innerWidth && window.innerHeight) return window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
-    return 'portrait';
+    // Otherwise, it's wider than it is tall, so it's landscape
+    return 'landscape';
   }
   state.orientation = detectOrientation();
 

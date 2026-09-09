@@ -1559,15 +1559,30 @@
   stripCanvas.addEventListener('pointerup', endStickerDrag);
   stripCanvas.addEventListener('pointercancel', endStickerDrag);
 
-  /* ================= share / print ================= */
-  function renderForExport(){
-    var prevSelected = state.selectedSticker;
-    state.selectedSticker = null;
-    drawStrip();
-    return function restore(){
-      state.selectedSticker = prevSelected;
-      drawStrip();
-    };
+/* ================= share / print ================= */
+  function shareStrip(){
+    var restore = renderForExport();
+    stripCanvas.toBlob(function(blob){
+      restore();
+      if (!blob) return;
+      
+      var brand = (brandInput.value || 'booth').trim() || 'booth';
+      var filename = brand + '-strip.png';
+      
+      // Try native share API first (mobile)
+      var file = new File([blob], filename, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({
+          files: [file],
+          title: brand + ' photo strip'
+        }).catch(function(err) { console.log('Share canceled', err); });
+      } else {
+        // Fallback for desktop: open image in a new tab
+        var url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      }
+    }, 'image/png');
   }
 
   function endStickerDrag(){ stickerDrag.active = false; stickerDrag.mode = null; stickerDrag.index = -1; }

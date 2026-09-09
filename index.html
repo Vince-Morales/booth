@@ -338,7 +338,6 @@
     height:auto;
     border-radius:10px;
     display:block;
-    touch-action:none;
     flex:0 0 auto;
     margin:0 auto;
   }
@@ -1558,7 +1557,15 @@
   function endStickerDrag(){ stickerDrag.active = false; stickerDrag.mode = null; stickerDrag.index = -1; }
   stripCanvas.addEventListener('pointerup', endStickerDrag);
   stripCanvas.addEventListener('pointercancel', endStickerDrag);
-
+  stripCanvas.addEventListener('touchstart', function(e){
+    if (!e.touches.length) return;
+    var pt = canvasPointFromClientXY(e.touches[0].clientX, e.touches[0].clientY);
+    
+    // If they tap a sticker, or already have one selected, stop the scroll
+    if (hitTestSticker(pt.x, pt.y) >= 0 || stickerDrag.active) {
+      e.preventDefault();
+    }
+  }, { passive: false });
   /* ================= share / print ================= */
   function renderForExport(){
     var prevSelected = state.selectedSticker;

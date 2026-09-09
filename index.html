@@ -1560,7 +1560,11 @@
   stripCanvas.addEventListener('pointercancel', endStickerDrag);
 
 /* ================= share / print ================= */
-function endStickerDrag(){ stickerDrag.active = false; stickerDrag.mode = null; stickerDrag.index = -1; }
+  function endStickerDrag(){ 
+    stickerDrag.active = false; 
+    stickerDrag.mode = null; 
+    stickerDrag.index = -1; 
+  }
   stripCanvas.addEventListener('pointerup', endStickerDrag);
   stripCanvas.addEventListener('pointercancel', endStickerDrag);
   stripCanvas.addEventListener('touchstart', function(e){
@@ -1572,7 +1576,6 @@ function endStickerDrag(){ stickerDrag.active = false; stickerDrag.mode = null; 
     }
   }, { passive: false });
 
-  /* ================= share / print ================= */
   function renderForExport(){
     var prevSelected = state.selectedSticker;
     state.selectedSticker = null;
